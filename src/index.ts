@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import sessionsRouter from "./routes/sessions";
 import authRouter from "./routes/auth";
 import treesRouter from "./routes/trees";
+import groupsRouter from "./routes/groups";
 import { startMidnightCron, runMidnightReset } from "./jobs/midnightReset";
 
 const app = express();
@@ -48,6 +49,7 @@ if (process.env.NODE_ENV !== "production") {
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/sessions", sessionsRouter);
 app.use("/api/v1/trees", treesRouter);
+app.use("/api/v1/groups", groupsRouter);
 
 // ---------------------------------------------------------------------------
 // 404 handler
