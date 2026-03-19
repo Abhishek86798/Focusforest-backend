@@ -1,0 +1,42 @@
+# FocusForest — Cursor Rules
+
+## Project
+FocusForest backend. Node.js + Express + TypeScript + Prisma + Supabase + Redis.
+Building backend only. No frontend yet.
+
+## Core mechanic (never get this wrong)
+One tree per day. Stage progress = (focus_minutes / 25) × task_multiplier.
+task_multiplier: completed=1.5, carried=1.0, none=1.0.
+This formula runs SERVER-SIDE ONLY. Never suggest putting it on the client.
+
+## Non-negotiable rules
+- Score engine is server-side only
+- JWT tokens go in httpOnly cookies, never localStorage
+- Every POST body validated with Zod before touching Prisma
+- All session submissions include client_session_id (UUID) for deduplication
+- Midnight cron batches by user utc_offset — never a single UTC cron
+- Use Prisma for all DB queries
+
+## Stack
+- Node.js 20, Express 4, TypeScript 5
+- Prisma 5 → Supabase PostgreSQL
+- Supabase Auth (JWT)
+- Supabase Realtime (group live sessions)
+- Redis via Upstash (leaderboard sorted sets + BullMQ)
+- node-cron (midnight reset job)
+- BullMQ (push notification queue)
+- Railway (hosting)
+
+## Key tables
+users, sessions, daily_trees, streaks, groups, group_members, push_subscriptions
+
+## API base
+/api/v1 — all routes require Bearer JWT except /auth/signup and /auth/login
+
+## When generating code
+- Always check if a Prisma schema exists before writing queries
+- Always add Zod schema before the route handler
+- Prefer async/await over .then()
+- Use try/catch with typed errors
+- Never suggest client-side score calculation
+- Never use any — use proper TypeScript types
