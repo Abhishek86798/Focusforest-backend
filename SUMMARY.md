@@ -3,6 +3,8 @@
 **Last updated:** 2026-03-21  
 **Starting point:** Empty folder with just CLAUDE.md and docs/PRD.md
 
+**Current Status:** All Week 1-4 backend features complete. Ready for deployment.
+
 ---
 
 ## What Was Built
@@ -110,12 +112,48 @@ Fires every hour (`0 * * * *`). Processes users whose local time is currently 00
 **Per-user pipeline at midnight:**
 1. Finalise yesterday's `daily_trees` — lock `stage`, set `is_bare` if 0 sessions, set `finalised_at`
 2. Update streak — increment if consecutive day, reset to 0 if bare (idempotent)
-3. Seed today's `daily_trees` row — skips if user already had a session (idempotent)
-4. Weekly forest check — if Sunday and all 7 days had sessions, logs completion (hook for push/archive)
+3. Update solo leaderboard — write user's total completed trees to Redis sorted set
+4. Seed today's `daily_trees` row — skips if user already had a session (idempotent)
+5. Weekly forest check — if Sunday and all 7 days had sessions, logs completion (hook for push/archive)
+6. After all users processed — recompute group leaderboard in one pass
 
 **Dev trigger route** (disabled in production):
 ```
 POST /dev/midnight-reset   →  runs runMidnightReset() immediately
+```
+
+---
+
+### 🏆 Leaderboard API — `GET /api/v1/leaderboard/*`
+
+| Route | What it does |
+|-------|-------------|
+| `GET /leaderboard/solo` | Returns ranked list of users by total completed trees (stage=4); includes rank, userId, name, totalTrees, currentStreak; supports `?page=1&limit=20` pagination |
+| `GET /leaderboard/groups` | Returns ranked list of groups by combined completed trees across all members; includes rank, groupId, name, totalTrees, memberCount; supports `?page=1&limit=20` pagination |
+
+**Files:**
+- [src/lib/redis.ts](file:///d:/SEM%206/HCI/FocusForest/src/lib/redis.ts) — Upstash Redis client singleton using REST API
+- [src/services/leaderboardService.ts](file:///d:/SEM%206/HCI/FocusForest/src/services/leaderboardService.ts) — 5 service functions: `updateSoloLeaderboard`, `updateGroupsLeaderboard`, `getSoloLeaderboard`, `getGroupsLeaderboard`
+- [src/routes/leaderboard.ts](file:///d:/SEM%206/HCI/FocusForest/src/routes/leaderboard.ts) — 2 route handlers (Zod-validated query params)
+
+**Redis Keys:**
+- `leaderboard:solo` — sorted set mapping userId → total completed trees count
+- `leaderboard:groups` — sorted set mapping groupId → total completed trees count
+
+**Update Strategy:**
+- Solo leaderboard: updated per-user during midnight reset after streak update
+- Groups leaderboard: full recompute once per midnight batch (after all users processed)
+
+**Verified output for `GET /leaderboard/solo?page=1&limit=5`:**
+```json
+{
+  "leaderboard": [
+    {"rank": 1, "userId": "...", "name": "Alice", "totalTrees": 42, "currentStreak": 7},
+    {"rank": 2, "userId": "...", "name": "Bob", "totalTrees": 38, "currentStreak": 5}
+  ],
+  "page": 1,
+  "limit": 5
+}
 ```
 
 ---
@@ -160,6 +198,8 @@ POST   /api/v1/groups/join                        Bearer JWT
 GET    /api/v1/groups/:id                         Bearer JWT
 GET    /api/v1/groups/:id/calendar                Bearer JWT
 DELETE /api/v1/groups/:id/members/:userId         Bearer JWT
+GET    /api/v1/leaderboard/solo                   Bearer JWT
+GET    /api/v1/leaderboard/groups                 Bearer JWT
 POST   /dev/midnight-reset                        no auth (dev only)
 ```
 
@@ -183,11 +223,45 @@ POST   /dev/midnight-reset                        no auth (dev only)
 | Week 2 (partial) | Session engine + Tree endpoints | ✅ **Complete** |
 | Week 2 (remaining) | Midnight cron + Streak logic | ✅ **Complete** |
 | Week 3 | Groups API | ✅ **Complete** |
-| Week 4 | Leaderboard (needs Upstash Redis) + Deploy | ⏳ Next |
+| Week 4 | Leaderboard + Redis integration | ✅ **Complete** |
 
 ---
 
-## Still Needed (credentials)
-- **Upstash Redis** — `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REDIS_URL`  
-  Required for: leaderboard sorted sets + BullMQ job queues  
-  → Create free DB at [console.upstash.com](https://console.upstash.com)
+## Next Steps
+
+### Deployment (Week 4 remaining)
+- **Railway deployment** — configure environment variables, deploy backend
+- **End-to-end testing** — run full Postman collection against production
+- **Update Postman collection** — add leaderboard test requests
+
+### Future Features (Post v1.0)
+- **Live group sessions** — Supabase Realtime pub/sub for synced timers
+- **Web push notifications** — BullMQ worker + service worker integration
+- **Friends scope** — filter leaderboards to show only group members
+- **Weekly forest archive** — persist completed weeks to dedicated table
+
+---
+
+## Next Steps
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| @upstash/redis | ^1.37.0 | REST-based Redis client for leaderboard sorted sets |
+| @prisma/client | ^5.22.0 | Type-safe database queries |
+| @supabase/supabase-js | ^2.49.4 | Supabase Auth + Realtime |
+| express | ^4.21.2 | REST API framework |
+| zod | ^3.24.2 | Runtime validation |
+| node-cron | ^4.2.1 | Midnight reset scheduler |
+| cookie-parser | ^1.4.7 | httpOnly cookie handling |
+| cors | ^2.8.5 | CORS middleware |
+| dotenv | ^16.4.7 | Environment variable loading |
+
+---
+
+## Environment Configuration
+
+All required credentials are configured in `.env`:
+- ✅ Supabase PostgreSQL connection strings (DATABASE_URL, DIRECT_URL)
+- ✅ Supabase Auth credentials (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
+- ✅ Upstash Redis credentials (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
+- ✅ App configuration (APP_URL, COOKIE_SECRET, PORT)

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: focusforest-backend
+    runtime: node
+    buildCommand: npm install && npm run build && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
