@@ -2,7 +2,7 @@ services:
   - type: web
     name: focusforest-backend
     runtime: node
-    buildCommand: npm install && npm run build && npx prisma generate
+    buildCommand: npm ci && npm run build && node node_modules/.bin/prisma generate
     startCommand: npm start
     envVars:
       - key: NODE_ENV
