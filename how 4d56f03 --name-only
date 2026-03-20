@@ -1,0 +1,23 @@
+[33mcommit b89bca6e41de4766818bb59658be3bca1cdcab05[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Abhishek <abhikokadwar2@gmail.com>
+Date:   Sat Mar 21 02:59:13 2026 +0530
+
+    fix: add .gitignore, remove .env from tracking
+
+[33mcommit f3420d445b58e917e7808e87817e14a041addde1[m
+Author: Abhishek <abhikokadwar2@gmail.com>
+Date:   Sat Mar 21 01:59:56 2026 +0530
+
+    fix: correct UTC window for session aggregate - timezone bug for non-UTC users
+
+[33mcommit 51d3b3db495045bd738491d93f6451db556a6683[m
+Author: Abhishek <abhikokadwar2@gmail.com>
+Date:   Fri Mar 20 04:59:34 2026 +0530
+
+    feat: midnight cron + streak service complete - Week 2 done
+
+[33mcommit 9f636cf331dbd38c84fc63f03302675eef2e76cc[m
+Author: Abhishek <abhikokadwar2@gmail.com>
+Date:   Fri Mar 20 04:11:58 2026 +0530
+
+    setup
