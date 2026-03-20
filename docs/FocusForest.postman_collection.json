@@ -1,0 +1,1533 @@
+{
+  "info": {
+    "_postman_id": "focusforest-backend-collection-v1",
+    "name": "FocusForest Backend",
+    "description": "Complete API test collection for the FocusForest backend. Run folders in order: Health → Auth → Sessions → Trees → Groups → Edge Cases → Dev Tools.\n\nBefore running: make sure your server is up with `npm run dev`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "jwt",
+      "value": "",
+      "type": "string",
+      "description": "Auto-set by Signup or Login response"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-set by Signup or Login response"
+    },
+    {
+      "key": "groupId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-set by Create Group response"
+    },
+    {
+      "key": "inviteCode",
+      "value": "",
+      "type": "string",
+      "description": "Auto-set by Create Group response"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 — Health Check",
+      "description": "Basic server health check. Run this first to confirm the server is responding.",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Health check — no auth required. Returns { status: 'ok' }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has status ok\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql(\"ok\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has timestamp\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.timestamp).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 — Auth",
+      "description": "Authentication flow: Signup → Login → Me → Logout. Must run Signup or Login first to populate {{jwt}}.",
+      "item": [
+        {
+          "name": "POST /auth/signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@focusforest.com\",\n  \"password\": \"Test1234!\",\n  \"name\": \"Test User\",\n  \"utcOffset\": 330\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signup"
+              ]
+            },
+            "description": "Register a new user. Auto-saves jwt and userId collection variables. utcOffset 330 = IST (India Standard Time)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"Status is 201 (new user) or 409 (already registered — re-run)\", function () {",
+                  "  pm.expect([201, 409]).to.include(status);",
+                  "});",
+                  "",
+                  "if (status === 201) {",
+                  "  pm.test(\"Response contains accessToken\", function () {",
+                  "    pm.expect(body.accessToken).to.be.a(\"string\").and.not.be.empty;",
+                  "  });",
+                  "",
+                  "  pm.test(\"Response contains user object with correct fields\", function () {",
+                  "    pm.expect(body.user).to.be.an(\"object\");",
+                  "    pm.expect(body.user.id).to.be.a(\"string\");",
+                  "    pm.expect(body.user.email).to.eql(\"test@focusforest.com\");",
+                  "    pm.expect(body.user.name).to.eql(\"Test User\");",
+                  "    pm.expect(body.user.utcOffset).to.eql(330);",
+                  "  });",
+                  "",
+                  "  // Auto-save jwt and userId on first-run signup",
+                  "  if (body.accessToken) pm.collectionVariables.set(\"jwt\", body.accessToken);",
+                  "  if (body.user && body.user.id) pm.collectionVariables.set(\"userId\", body.user.id);",
+                  "} else {",
+                  "  // 409 EMAIL_TAKEN — user already registered from a previous run.",
+                  "  // This is expected. Run the Login request next — it will set {{jwt}}.",
+                  "  console.warn(\"[Signup] 409 EMAIL_TAKEN: test@focusforest.com already exists. The Login request will set {{jwt}}.\");",
+                  "  pm.test(\"Error code is EMAIL_TAKEN\", function () {",
+                  "    pm.expect(body.error.code).to.eql(\"EMAIL_TAKEN\");",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@focusforest.com\",\n  \"password\": \"Test1234!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login with email and password. Auto-saves jwt and userId. Run this if Signup has already been done."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains accessToken\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.accessToken).to.be.a(\"string\").and.not.be.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains user object\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.user).to.be.an(\"object\");",
+                  "  pm.expect(body.user.id).to.be.a(\"string\");",
+                  "  pm.expect(body.user.email).to.eql(\"test@focusforest.com\");",
+                  "});",
+                  "",
+                  "// Auto-save jwt and userId",
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) {",
+                  "  pm.collectionVariables.set(\"jwt\", body.accessToken);",
+                  "}",
+                  "if (body.user && body.user.id) {",
+                  "  pm.collectionVariables.set(\"userId\", body.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Get current authenticated user profile. Requires Bearer {{jwt}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has id\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.id).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has email\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.email).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has name\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.name).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"utcOffset equals 330 (IST)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.utcOffset).to.eql(330);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has createdAt\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.createdAt).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logout. Clears httpOnly cookies. JWT is stateless so you must login again to get a new token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 — Sessions",
+      "description": "Submit focus sessions and retrieve session history. Score engine runs server-side. Run Auth folder first.",
+      "item": [
+        {
+          "name": "POST /sessions — Classic, task completed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskText\": \"Finish Chapter 4\",\n  \"taskStatus\": \"completed\",\n  \"clientSessionId\": \"11111111-1111-1111-1111-111111111111\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "Classic 25-min session with a completed task. Expected stageProgress = 1.5 (25/25 × 1.5 multiplier)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.stageProgress equals 1.5 (25/25 × 1.5)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.stageProgress).to.eql(1.5);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.glowLevel).to.eql(4);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.stage equals 1 (Sprout at 1.5 progress)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.stage).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.totalSessions equals 1\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.totalSessions).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has streak object\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.streak).to.be.an(\"object\");",
+                  "  pm.expect(body.streak.currentStreak).to.be.a(\"number\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions — Dedup test (same clientSessionId → 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskText\": \"Finish Chapter 4\",\n  \"taskStatus\": \"completed\",\n  \"clientSessionId\": \"11111111-1111-1111-1111-111111111111\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "Same clientSessionId as the first session. Server must reject with 409 DUPLICATE_SESSION."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409 Conflict (dedup)\", function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test(\"Error code is DUPLICATE_SESSION\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.code).to.eql(\"DUPLICATE_SESSION\");",
+                  "});",
+                  "",
+                  "pm.test(\"Error has message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions — Classic, no task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskStatus\": \"none\",\n  \"clientSessionId\": \"22222222-2222-2222-2222-222222222222\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "Classic 25-min session, no task set. stageProgress increment = 1.0. Cumulative = 2.5."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.stageProgress equals 2.5 (cumulative)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.stageProgress).to.eql(2.5);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.glowLevel).to.be.below(4);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.totalSessions equals 2\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.totalSessions).to.eql(2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions — Sprint, task carried",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"sprint\",\n  \"focusMinutes\": 15,\n  \"taskText\": \"Quick review\",\n  \"taskStatus\": \"carried\",\n  \"clientSessionId\": \"33333333-3333-3333-3333-333333333333\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "Sprint 15-min session with carried task. stageProgress increment = 0.6 (15/25 × 1.0). Cumulative = 3.1."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  // Allow floating point tolerance",
+                  "  pm.expect(body.tree.stageProgress).to.be.closeTo(3.1, 0.01);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.stage equals 3 (Young Tree at ≥3.0)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.stage).to.eql(3);",
+                  "});",
+                  "",
+                  "pm.test(\"tree.totalSessions equals 3\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree.totalSessions).to.eql(3);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions — Session history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "Get session history. Should return 3 sessions (dedup was rejected so only 3 are stored)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has sessions array\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.sessions).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "pm.test(\"sessions array has total field\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.total).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"Array length is 3 (dedup rejected one)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.sessions.length).to.eql(3);",
+                  "});",
+                  "",
+                  "pm.test(\"Each session has required fields\", function () {",
+                  "  const body = pm.response.json();",
+                  "  body.sessions.forEach(function(s) {",
+                  "    pm.expect(s.id).to.be.a(\"string\");",
+                  "    pm.expect(s.variant).to.be.a(\"string\");",
+                  "    pm.expect(s.focusMinutes).to.be.a(\"number\");",
+                  "    pm.expect(s.stageProgress).to.be.a(\"number\");",
+                  "    pm.expect(s.createdAt).to.be.a(\"string\");",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions — With date filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions?startDate=2026-01-01&endDate=2026-12-31&limit=10&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-12-31"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get session history with date range filter and pagination."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has sessions array\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.sessions).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has total count\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.total).to.be.a(\"number\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 — Trees & Calendar",
+      "description": "Read-only tree endpoints. Reflects sessions submitted in folder 3.",
+      "item": [
+        {
+          "name": "GET /trees/today",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/trees/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "trees",
+                "today"
+              ]
+            },
+            "description": "Get today's live tree state. Uses user's utcOffset to determine 'today'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has date field\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.date).to.be.a(\"string\").and.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has stage field\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.stage).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has glowLevel field\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.glowLevel).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has totalSessions field\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalSessions).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"isBare is false (day not over yet)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.isBare).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test(\"finalisedAt is null (day not finalised yet)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.finalisedAt).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /trees/calendar?month=3&year=2026",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/trees/calendar?month=3&year=2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "trees",
+                "calendar"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "3"
+                },
+                {
+                  "key": "year",
+                  "value": "2026"
+                }
+              ]
+            },
+            "description": "Get all daily trees for March 2026. Returns array of tree objects per day."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has trees array\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.trees).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "pm.test(\"Each tree has date, stage, glowLevel\", function () {",
+                  "  const body = pm.response.json();",
+                  "  body.trees.forEach(function(t) {",
+                  "    pm.expect(t.date).to.be.a(\"string\");",
+                  "    pm.expect(t.stage).to.be.a(\"number\");",
+                  "    pm.expect(t.glowLevel).to.be.a(\"number\");",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /trees/week/2026-W12",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/trees/week/2026-W12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "trees",
+                "week",
+                "2026-W12"
+              ]
+            },
+            "description": "Get a full 7-day week view (ISO week 12 of 2026 = Mon Mar 16 → Sun Mar 22). Missing days are filled with stage:0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has weekId\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.weekId).to.eql(\"2026-W12\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has 7 day slots\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.days).to.be.an(\"array\").with.lengthOf(7);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has complete boolean flag\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.complete).to.be.a(\"boolean\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has startDate and endDate\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.startDate).to.be.a(\"string\");",
+                  "  pm.expect(body.endDate).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 — Groups",
+      "description": "Group creation, joining, viewing, and member management. Run Sessions folder first so forest data exists.",
+      "item": [
+        {
+          "name": "POST /groups — Create group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Study Squad\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups"
+              ]
+            },
+            "description": "Create a new group. Authenticated user becomes admin and first member. Auto-saves groupId and inviteCode."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201 Created\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has id\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.id).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has name\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.name).to.eql(\"Study Squad\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has inviteCode\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.inviteCode).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"inviteCode is 6 characters\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.inviteCode.length).to.eql(6);",
+                  "});",
+                  "",
+                  "pm.test(\"memberCount equals 1\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.memberCount).to.eql(1);",
+                  "});",
+                  "",
+                  "// Auto-save groupId and inviteCode",
+                  "const body = pm.response.json();",
+                  "if (body.id) {",
+                  "  pm.collectionVariables.set(\"groupId\", body.id);",
+                  "}",
+                  "if (body.inviteCode) {",
+                  "  pm.collectionVariables.set(\"inviteCode\", body.inviteCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/:groupId — Group details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups",
+                "{{groupId}}"
+              ]
+            },
+            "description": "Get group details, members list, and forest stats. User must be a member."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has members array\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.members).to.be.an(\"array\");",
+                  "});",
+                  "",
+                  "pm.test(\"members array has 1 entry (creator only)\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.members.length).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test(\"Each member has userId, name, currentStreak, joinedAt\", function () {",
+                  "  const body = pm.response.json();",
+                  "  body.members.forEach(function(m) {",
+                  "    pm.expect(m.userId).to.be.a(\"string\");",
+                  "    pm.expect(m.name).to.be.a(\"string\");",
+                  "    pm.expect(m.currentStreak).to.be.a(\"number\");",
+                  "    pm.expect(m.joinedAt).to.be.a(\"string\");",
+                  "  });",
+                  "});",
+                  "",
+                  "pm.test(\"Response has forestStats\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.forestStats).to.be.an(\"object\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response has adminUserId\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.adminUserId).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/:groupId/calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}/calendar?month=3&year=2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups",
+                "{{groupId}}",
+                "calendar"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "3"
+                },
+                {
+                  "key": "year",
+                  "value": "2026"
+                }
+              ]
+            },
+            "description": "Group accountability calendar — daily output per member for March 2026."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has days array\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.days).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /groups/join — Own group → 409 ALREADY_MEMBER",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteCode\": \"{{inviteCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups",
+                "join"
+              ]
+            },
+            "description": "Try to join the group you just created. Should return 409 ALREADY_MEMBER."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409 Conflict (already member)\", function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test(\"Error code is ALREADY_MEMBER\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.code).to.eql(\"ALREADY_MEMBER\");",
+                  "});",
+                  "",
+                  "pm.test(\"Error has message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /groups/:groupId/members/:userId — Leave group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}/members/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups",
+                "{{groupId}}",
+                "members",
+                "{{userId}}"
+              ]
+            },
+            "description": "Leave the group (self-removal). Uses {{groupId}} and {{userId}} collection variables."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 — Edge Cases & Error Handling",
+      "description": "Verify validation, auth guards, and consistent error envelope { error: { code, message } }.",
+      "item": [
+        {
+          "name": "GET /auth/me — No token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "No Authorization header. Must return 401 UNAUTHORIZED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401 Unauthorized\", function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Error envelope has code and message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.an(\"object\");",
+                  "  pm.expect(body.error.code).to.be.a(\"string\");",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions — Invalid variant → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"invalid_variant\",\n  \"focusMinutes\": 25,\n  \"taskStatus\": \"none\",\n  \"clientSessionId\": \"44444444-4444-4444-4444-444444444444\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "variant is not one of: sprint|classic|deep_work|flow|custom. Must return 400 VALIDATION_ERROR."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400 Bad Request\", function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Error code is VALIDATION_ERROR\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "});",
+                  "",
+                  "pm.test(\"Error envelope is correct shape\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.an(\"object\");",
+                  "  pm.expect(body.error.code).to.be.a(\"string\");",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions — Missing required fields → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"classic\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ]
+            },
+            "description": "Body is missing focusMinutes, taskStatus, clientSessionId. Must return 400 VALIDATION_ERROR."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400 Bad Request\", function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Error code is VALIDATION_ERROR\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "});",
+                  "",
+                  "pm.test(\"Error envelope matches { error: { code, message } }\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.an(\"object\");",
+                  "  pm.expect(body.error.code).to.be.a(\"string\");",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/nonexistent-id → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/nonexistent-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups",
+                "nonexistent-id"
+              ]
+            },
+            "description": "Group ID that does not exist. Must return 404 GROUP_NOT_FOUND or 403 FORBIDDEN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404 or 403 (not found or not a member)\", function () {",
+                  "  pm.expect([403, 404]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Error envelope has code and message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error).to.be.an(\"object\");",
+                  "  pm.expect(body.error.code).to.be.a(\"string\");",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /groups/join — Wrong invite code → 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteCode\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "groups",
+                "join"
+              ]
+            },
+            "description": "Invite code 000000 does not exist. Must return 404 INVALID_INVITE_CODE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404 Not Found\", function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Error code is INVALID_INVITE_CODE\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.code).to.eql(\"INVALID_INVITE_CODE\");",
+                  "});",
+                  "",
+                  "pm.test(\"Error envelope has message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.error.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 — Dev Tools",
+      "description": "Development-only utilities. Only available when NODE_ENV != production.",
+      "item": [
+        {
+          "name": "POST /dev/midnight-reset",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/dev/midnight-reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dev",
+                "midnight-reset"
+              ]
+            },
+            "description": "Manually trigger the midnight cron job. Finalizes trees, updates streaks, inserts bare soil for missed days. Use this to test streak resets without waiting for midnight."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has ok: true\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.ok).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

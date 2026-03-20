@@ -91,6 +91,11 @@
 - [src/services/groupService.ts](file:///d:/SEM%206/HCI/FocusForest/src/services/groupService.ts) — 6 service functions: `generateInviteCode`, `createGroup`, `joinGroup`, `getGroupDetails`, `getGroupCalendar`, `removeMember`
 - [src/routes/groups.ts](file:///d:/SEM%206/HCI/FocusForest/src/routes/groups.ts) — 5 route handlers (Zod-validated, thin)
 
+**Verified output for `POST /groups`:**
+```json
+{"id":"e77791d1-6765-4775-917b-eb5ab769b714","name":"Study Squad","inviteCode":"66WWXC","memberCount":1,"createdAt":"2026-03-19T23:57:19.638Z"}
+```
+
 ---
 
 ### ⏰ Midnight Cron — Timezone-Aware Daily Reset

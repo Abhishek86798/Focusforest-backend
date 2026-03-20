@@ -1,16 +1,12 @@
 import { prisma } from "../lib/prisma";
 
 // glow_level: 0–4
-// Computed as: Math.floor((sessionsWithTask / totalSessions) * 4)
-// 4 = full golden glow (all sessions had completed tasks)
-// 0 = plain tree (no tasks set)
 function computeGlowLevel(sessionsWithTask: number, totalSessions: number): number {
   if (totalSessions === 0) return 0;
   return Math.min(4, Math.floor((sessionsWithTask / totalSessions) * 4));
 }
 
-// stage: 0–4. Increments are cumulative — once a point threshold is crossed, stage advances.
-// Thresholds: 0 → 1.0 → 2.0 → 3.0 → 4.0
+// stage: 0–4. Thresholds: 1.0 / 2.0 / 3.0 / 4.0
 function computeStage(cumulativeProgress: number): number {
   if (cumulativeProgress >= 4.0) return 4;
   if (cumulativeProgress >= 3.0) return 3;
@@ -28,8 +24,9 @@ export interface TreeState {
 }
 
 // Upserts the daily_trees row for today (user's local date based on utcOffset).
-// Creates the row if it's the first session of the day.
-// Increments sessions, recalculates stage and glow_level on every subsequent session.
+// NOTE: The session row is written to DB *before* this function runs (sessions.ts
+// step 4 → 5). We compute cumulative stageProgress by summing all sessions
+// within the user's local calendar day window.
 export async function upsertDailyTree(
   userId: string,
   stageProgressDelta: number,
@@ -37,60 +34,42 @@ export async function upsertDailyTree(
 ): Promise<TreeState> {
   const hadTask = taskStatus === "completed";
 
-  // Get user's UTC offset to determine their local calendar date
+  // Get user's UTC offset
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: { utcOffset: true },
   });
 
-  // Compute user's local date
+  // Compute user's local date string ("YYYY-MM-DD") — used as the date key in daily_trees
   const nowUtcMs = Date.now() + user.utcOffset * 60 * 1000;
-  const localDate = new Date(nowUtcMs);
-  // Zero out time to get just the date
-  const dateStr = localDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const todayDate = new Date(dateStr);
+  const dateStr = new Date(nowUtcMs).toISOString().slice(0, 10);
+  const todayDate = new Date(dateStr); // "YYYY-MM-DDT00:00:00.000Z" — date key in DB
 
-  // Upsert: create or update the daily_trees row
+  // Compute the real UTC timestamps for the start/end of the user's local day.
+  // Example: IST is UTC+330. Local midnight IST = UTC midnight - 5h30m = 18:30 UTC prev day.
+  const localDayStartUtc = new Date(todayDate.getTime() - user.utcOffset * 60 * 1000);
+  const localDayEndUtc = new Date(localDayStartUtc.getTime() + 24 * 60 * 60 * 1000);
+
+  // Sum all sessions (including the one just written) in the user's local day window.
+  const agg = await prisma.session.aggregate({
+    where: {
+      userId,
+      createdAt: { gte: localDayStartUtc, lt: localDayEndUtc },
+    },
+    _sum: { stageProgress: true },
+  });
+
+  // This is the true cumulative stageProgress for today (includes current session).
+  const newCumulativeProgress = agg._sum.stageProgress ?? stageProgressDelta;
+
+  // Read existing row for current counts
   const existing = await prisma.dailyTree.findUnique({
     where: { userId_date: { userId, date: todayDate } },
   });
 
-  let newTotalSessions: number;
-  let newSessionsWithTask: number;
-  let newCumulativeProgress: number;
-
-  if (!existing) {
-    // First session today — create the row
-    newTotalSessions = 1;
-    newSessionsWithTask = hadTask ? 1 : 0;
-    newCumulativeProgress = stageProgressDelta;
-  } else {
-    newTotalSessions = existing.totalSessions + 1;
-    newSessionsWithTask = existing.sessionsWithTask + (hadTask ? 1 : 0);
-    // Read existing cumulative progress back from stage-derived value
-    // We store it implicitly — recalculate from existing stage + delta won't work cleanly.
-    // Better: store cumulative in a dedicated field. Since our schema uses `stage` (integer),
-    // we track cumulative progress via total stage_progress across sessions joined by date.
-    // For now, lookup sum from sessions table for today.
-    newCumulativeProgress = 0; // will be computed below
-  }
-
-  // Compute cumulative stageProgress from sessions today (source of truth)
-  const todaySessionsAgg = await prisma.session.aggregate({
-    where: {
-      userId,
-      createdAt: {
-        gte: todayDate,
-        lt: new Date(todayDate.getTime() + 24 * 60 * 60 * 1000),
-      },
-    },
-    _sum: { stageProgress: true },
-    _count: { id: true },
-  });
-
-  // Add the new session's progress (not yet written to sessions table at this point)
-  newCumulativeProgress = (todaySessionsAgg._sum.stageProgress ?? 0) + stageProgressDelta;
-  const newStage = Math.min(4, computeStage(newCumulativeProgress));
+  const newTotalSessions = (existing?.totalSessions ?? 0) + 1;
+  const newSessionsWithTask = (existing?.sessionsWithTask ?? 0) + (hadTask ? 1 : 0);
+  const newStage = computeStage(newCumulativeProgress);
   const newGlowLevel = computeGlowLevel(newSessionsWithTask, newTotalSessions);
 
   const updated = await prisma.dailyTree.upsert({
