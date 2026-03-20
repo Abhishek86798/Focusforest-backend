@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "../lib/prisma";
 import { upsertStreak, resetStreak, toUtcMidnight } from "../services/streakService";
+import { updateSoloLeaderboard, updateGroupsLeaderboard } from "../services/leaderboardService";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -189,6 +190,15 @@ export async function runMidnightReset(): Promise<void> {
     }
   }
 
+  // After all users are processed, recompute group leaderboard in one pass.
+  // (Group membership can change any time, so a full recompute is safest.)
+  try {
+    await updateGroupsLeaderboard();
+    console.log(`[midnightReset] Groups leaderboard updated.`);
+  } catch (err) {
+    console.error(`[midnightReset] Failed to update groups leaderboard:`, err);
+  }
+
   console.log(`[midnightReset] Done.`);
 }
 
@@ -268,7 +278,18 @@ async function processUserMidnight(
   }
 
   // ------------------------------------------------------------------
-  // Step 3: Seed next day's tree (idempotent — skip if already exists)
+  // Step 3: Update solo leaderboard score
+  // ------------------------------------------------------------------
+  try {
+    await updateSoloLeaderboard(userId);
+    console.log(`[midnightReset] User ${userId}: solo leaderboard updated.`);
+  } catch (err) {
+    // Non-fatal — Redis down should not fail the whole pipeline
+    console.error(`[midnightReset] User ${userId}: failed to update solo leaderboard:`, err);
+  }
+
+  // ------------------------------------------------------------------
+  // Step 4: Seed next day's tree (idempotent — skip if already exists)
   // ------------------------------------------------------------------
   const nextDayExists = await prisma.dailyTree.findUnique({
     where: { userId_date: { userId, date: todayDate } },
@@ -295,7 +316,7 @@ async function processUserMidnight(
   }
 
   // ------------------------------------------------------------------
-  // Step 4: Weekly forest completion check
+  // Step 5: Weekly forest completion check
   // ------------------------------------------------------------------
   await checkWeeklyForestCompletion(userId, yesterdayStr);
 }

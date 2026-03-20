@@ -1,6 +1,6 @@
 # FocusForest Backend — Session Summary
 
-**Last updated:** 2026-03-20  
+**Last updated:** 2026-03-21  
 **Starting point:** Empty folder with just CLAUDE.md and docs/PRD.md
 
 ---
@@ -120,7 +120,29 @@ POST /dev/midnight-reset   →  runs runMidnightReset() immediately
 
 ---
 
-## Live API Routes (all working)
+### 🧪 Postman Testing Suite
+
+| File | Purpose |
+|------|---------|
+| [docs/POSTMAN_TESTING_GUIDE.md](file:///d:/SEM%206/HCI/FocusForest/docs/POSTMAN_TESTING_GUIDE.md) | AI-generated testing guide — all folders, request bodies, test scripts, error cases, and pre-run checklist |
+| [docs/FocusForest.postman_collection.json](file:///d:/SEM%206/HCI/FocusForest/docs/FocusForest.postman_collection.json) | Importable Postman collection — 24 requests, `pm.test()` assertions, auto-saves `jwt`/`userId`/`groupId`/`inviteCode` |
+| [docs/FocusForest Backend.postman_test_run.json](file:///d:/SEM%206/HCI/FocusForest/docs/FocusForest%20Backend.postman_test_run.json) | Test run 1 results |
+| [docs/FocusForest Backend.postman_test_run2.json](file:///d:/SEM%206/HCI/FocusForest/docs/FocusForest%20Backend.postman_test_run2.json) | Test run 2 results — **86 pass / 3 fail** (before timezone fix) |
+
+**Collection structure:**
+```
+1 — Health Check       GET  /health
+2 — Auth               Signup · Login · Me · Logout
+3 — Sessions           4× POST (classic/sprint/dedup/no-task) · 2× GET (list + date filter)
+4 — Trees & Calendar   today · calendar · week/:weekId
+5 — Groups             Create · Details · Calendar · Join (409) · Leave
+6 — Edge Cases         401 no-token · 400 bad variant · 400 missing fields · 404 group · 404 invite code
+7 — Dev Tools          POST /dev/midnight-reset
+```
+
+**Re-run safety:** Signup accepts `201` (first run) or `409` (re-run, user exists — Login sets `{{jwt}}` instead).
+
+---
 
 ```
 GET    /health                                    no auth
@@ -143,7 +165,17 @@ POST   /dev/midnight-reset                        no auth (dev only)
 
 ---
 
-## PRD Roadmap Status
+## Bugs Fixed This Session
+
+| Bug | File | Root Cause | Fix |
+|-----|------|-----------|-----|
+| `DIRECT_URL` malformed in `.env` | `.env` | Comment `# Supabase — Auth & Admin` was appended directly to the URL (no newline), making the connection string unparseable → `Can't reach database server` on startup | Added newline between URL and comment |
+| `stageProgress` never accumulated (sessions 2+) | `treeService.ts` | Aggregate `WHERE createdAt >= todayDate` used UTC midnight of the user's local date. For IST users (UTC+5:30), sessions created at ~19:35 UTC fall **before** that boundary → sum = 0 each time | Changed window to `localDayStartUtc = todayDate − utcOffset`, which correctly maps to the user's real local midnight in UTC |
+| Postman collection failed on re-runs | `FocusForest.postman_collection.json` | Signup test required `201` strictly; on re-runs Supabase returns `409 EMAIL_TAKEN` so `{{jwt}}` was never saved and all downstream tests failed | Signup test now accepts `201 OR 409`; on 409 it logs a warning and Login sets `{{jwt}}` |
+
+---
+
+## Live API Routes (all working)
 
 | Week | Goal | Status |
 |------|------|--------|

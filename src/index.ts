@@ -7,6 +7,7 @@ import sessionsRouter from "./routes/sessions";
 import authRouter from "./routes/auth";
 import treesRouter from "./routes/trees";
 import groupsRouter from "./routes/groups";
+import leaderboardRouter from "./routes/leaderboard";
 import { startMidnightCron, runMidnightReset } from "./jobs/midnightReset";
 
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/sessions", sessionsRouter);
 app.use("/api/v1/trees", treesRouter);
 app.use("/api/v1/groups", groupsRouter);
+app.use("/api/v1/leaderboard", leaderboardRouter);
 
 // ---------------------------------------------------------------------------
 // 404 handler
