@@ -227,22 +227,167 @@ POST   /dev/midnight-reset                        no auth (dev only)
 
 ---
 
+---
+
+## Leaderboard Privacy Feature (2026-03-25)
+
+Added privacy controls allowing users to opt out of the global solo leaderboard while maintaining full access to all other platform features.
+
+### Database Changes
+- Added `isPrivate` boolean field to `users` table (default: `false`, mapped to `is_private` column)
+- Created Prisma migration: `20260325201939_add_is_private_to_users`
+
+### API Changes
+
+**New Endpoint:**
+- `PATCH /api/v1/auth/profile` — Update user profile including privacy settings
+  - Request: `{ name?, avatarUrl?, isPrivate? }`
+  - Response: Complete user profile with `isPrivate` field
+  - Immediately updates leaderboard when toggling from private to public
+
+**Modified Endpoints:**
+- `GET /api/v1/auth/me` — Now returns `isPrivate` field in response
+- `GET /api/v1/leaderboard/solo` — Scope validation changed to accept only `"global"` or `"none"` (removed `"friends"` scope)
+
+### Service Layer Updates
+
+**leaderboardService.ts:**
+- `updateSoloLeaderboard()` — Now checks user's `isPrivate` field:
+  - If `true`: removes user from Redis leaderboard via `ZREM`
+  - If `false`: adds/updates user in Redis leaderboard via `ZADD`
+- `getSoloLeaderboard()` — Now accepts `scope` parameter and filters out private users:
+  - Returns empty array for `scope="none"`
+  - Filters Prisma query with `isPrivate: false` for `scope="global"`
+  - Recalculates consecutive ranks after filtering
+
+**Groups Leaderboard (Unchanged):**
+- `updateGroupsLeaderboard()` — Continues to count all completed trees regardless of privacy
+- `getGroupsLeaderboard()` — No privacy filtering applied
+
+### Documentation Updates
+- Updated `docs/API.md` with new profile endpoint documentation
+- Added privacy notes explaining exclusion from global leaderboard
+- Updated leaderboard scope documentation to reflect `"global" | "none"` only
+
+### Key Behaviors
+- Default privacy: All users default to `isPrivate: false` (public)
+- Immediate update: Toggling from private to public immediately restores leaderboard position
+- Midnight cron: Automatically respects privacy settings through modified `updateSoloLeaderboard()`
+- Groups unaffected: Privacy settings do not affect group leaderboards or forest stats
+- Backward compatible: All existing functionality remains unchanged
+
+### Files Modified
+- `prisma/schema.prisma` — Added `isPrivate` field to User model
+- `src/routes/auth.ts` — Added PATCH `/profile` endpoint
+- `src/services/leaderboardService.ts` — Updated privacy logic in solo leaderboard functions
+- `src/routes/leaderboard.ts` — Updated scope validation
+- `docs/API.md` — Added profile endpoint and privacy documentation
+
+### Implementation Status
+✅ Database migration created  
+✅ Profile update endpoint implemented  
+✅ Privacy logic in leaderboard service  
+✅ Scope validation updated  
+✅ Groups leaderboard verified unchanged  
+✅ API documentation updated  
+⏸️ End-to-end testing pending (requires database connection)
+
+---
+
+## Immersive Mode Session Lifecycle (2026-03-25)
+
+Added immersive mode session tracking with live session state management, allowing users to start, complete, or abandon focus sessions with real-time validation.
+
+### Database Changes
+- Added `SessionState` enum: `active`, `completed`, `abandoned`
+- Added fields to `sessions` table:
+  - `state` — SessionState enum (default: `active`)
+  - `startedAt` — DateTime? (when session began)
+  - `expectedEndAt` — DateTime? (when session should end)
+  - `abandonedAt` — DateTime? (when session was abandoned)
+- Added composite index on `(user_id, state)` for efficient active session queries
+- Created Prisma migration: `20260325151244_add_immersive_mode_session_fields`
+
+### API Changes
+
+**New Endpoints:**
+- `POST /api/v1/sessions/start` — Start immersive mode session
+  - Request: `{ variant, focusMinutes, taskText?, clientSessionId }`
+  - Response: `{ sessionId, expectedEndAt }`
+  - Creates session with `state=active`, calculates `expectedEndAt`
+  
+- `POST /api/v1/sessions/:id/complete` — Complete active session
+  - Request: `{ taskStatus }`
+  - Validates: elapsed time >= 80% of `focusMinutes`
+  - If valid: runs score engine, updates tree, returns `{ tree, streak }`
+  - If too early: `400 SESSION_TOO_SHORT`
+  
+- `POST /api/v1/sessions/:id/abandon` — Abandon active session
+  - No request body
+  - Sets `state=abandoned`, `abandonedAt=now`
+  - Returns: `{ message }`
+
+**Modified Endpoints:**
+- `POST /api/v1/sessions` — Backward compatible legacy instant submission
+  - Now sets `state=completed` for instant submissions
+  - Sets `startedAt=null`, `expectedEndAt=null` for legacy mode
+
+### Midnight Cron Integration
+- Added `autoAbandonStaleSessions()` function
+- Runs before user processing in midnight reset
+- Auto-abandons sessions still `active` after `expectedEndAt + 60 minutes`
+- Prevents stale sessions from blocking user progress
+
+### Error Codes Added
+- `SESSION_NOT_FOUND` — Session ID doesn't exist
+- `SESSION_NOT_ACTIVE` — Session already completed or abandoned
+- `SESSION_TOO_SHORT` — Elapsed time < 80% of expected duration
+- `INVALID_SESSION` — Session missing required fields (e.g., startedAt)
+
+### Key Behaviors
+- Legacy compatibility: Existing POST /sessions continues to work unchanged
+- 80% rule: Users must complete at least 80% of focus time to earn tree progress
+- Auto-abandon: Stale sessions cleaned up hourly during midnight cron
+- Ownership validation: Users can only complete/abandon their own sessions
+- State validation: Sessions can only transition from `active` to `completed` or `abandoned`
+
+### Files Modified
+- `prisma/schema.prisma` — Added SessionState enum and session lifecycle fields
+- `src/routes/sessions.ts` — Added three new immersive mode endpoints
+- `src/jobs/midnightReset.ts` — Added auto-abandon logic for stale sessions
+- `src/lib/apiError.ts` — Added four new error codes
+- `docs/API.md` — Documented new session lifecycle endpoints
+
+### Implementation Status
+✅ Database schema migration applied  
+✅ Session start endpoint implemented  
+✅ Session complete endpoint with 80% validation  
+✅ Session abandon endpoint implemented  
+✅ Auto-abandon logic in midnight cron  
+✅ Backward compatibility maintained  
+✅ TypeScript compilation successful  
+✅ API documentation updated  
+⏸️ Postman collection update pending
+
+---
+
 ## Next Steps
 
 ### Deployment (Week 4 remaining)
 - **Railway deployment** — configure environment variables, deploy backend
 - **End-to-end testing** — run full Postman collection against production
-- **Update Postman collection** — add leaderboard test requests
+- **Update Postman collection** — add profile update and privacy toggle test requests
+- **Test leaderboard privacy** — verify private users excluded, immediate restoration on toggle
 
 ### Future Features (Post v1.0)
 - **Live group sessions** — Supabase Realtime pub/sub for synced timers
 - **Web push notifications** — BullMQ worker + service worker integration
-- **Friends scope** — filter leaderboards to show only group members
 - **Weekly forest archive** — persist completed weeks to dedicated table
+- **Property-based testing** — implement fast-check tests for privacy feature correctness properties
 
 ---
 
-## Next Steps
+## Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|

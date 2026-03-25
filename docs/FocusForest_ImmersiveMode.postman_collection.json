@@ -1,0 +1,734 @@
+{
+	"info": {
+		"_postman_id": "immersive-mode-v2",
+		"name": "FocusForest — Immersive Mode (v2)",
+		"description": "Test collection for immersive mode session lifecycle endpoints.\n\nAuto-login with test@focusforest.com / Test1234!\n\nNew endpoints:\n- POST /sessions/start\n- POST /sessions/:id/complete\n- POST /sessions/:id/abandon\n- PATCH /auth/profile (privacy feature)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "0 — Setup",
+			"item": [
+				{
+					"name": "Login (Auto)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"if (response.accessToken) {",
+									"    pm.collectionVariables.set(\"jwt\", response.accessToken);",
+									"    pm.collectionVariables.set(\"userId\", response.user.id);",
+									"    console.log(\"✅ JWT saved:\", response.accessToken.substring(0, 20) + \"...\");",
+									"    console.log(\"✅ User ID saved:\", response.user.id);",
+									"} else {",
+									"    console.error(\"❌ No accessToken in response\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test@focusforest.com\",\n  \"password\": \"Test1234!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1 — Profile Privacy",
+			"item": [
+				{
+					"name": "Get Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has isPrivate field\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property('isPrivate');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile (Set Private)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"isPrivate is true\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.isPrivate).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isPrivate\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile (Set Public)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"isPrivate is false\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.isPrivate).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isPrivate\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2 — Immersive Mode Sessions",
+			"item": [
+				{
+					"name": "Start Session (25min Classic)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Has sessionId\", function () {",
+									"    pm.expect(response).to.have.property('sessionId');",
+									"});",
+									"",
+									"pm.test(\"Has expectedEndAt\", function () {",
+									"    pm.expect(response).to.have.property('expectedEndAt');",
+									"});",
+									"",
+									"if (response.sessionId) {",
+									"    pm.collectionVariables.set(\"activeSessionId\", response.sessionId);",
+									"    console.log(\"✅ Active session ID saved:\", response.sessionId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique client session ID",
+									"const uuid = require('uuid');",
+									"pm.collectionVariables.set(\"clientSessionId\", uuid.v4());"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskText\": \"Test immersive mode session\",\n  \"clientSessionId\": \"{{clientSessionId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sessions/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sessions",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Session (Too Early - Should Fail)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 400 SESSION_TOO_SHORT\", function () {",
+									"    pm.response.to.have.status(400);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.error.code).to.eql('SESSION_TOO_SHORT');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"taskStatus\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sessions/{{activeSessionId}}/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sessions",
+								"{{activeSessionId}}",
+								"complete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Abandon Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has success message\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/sessions/{{activeSessionId}}/abandon",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sessions",
+								"{{activeSessionId}}",
+								"abandon"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start Session (1min Sprint for Quick Test)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"if (response.sessionId) {",
+									"    pm.collectionVariables.set(\"quickSessionId\", response.sessionId);",
+									"    console.log(\"✅ Quick session ID saved:\", response.sessionId);",
+									"    console.log(\"⏰ Wait 50 seconds (80% of 1 min) before completing...\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique client session ID",
+									"const uuid = require('uuid');",
+									"pm.collectionVariables.set(\"clientSessionId2\", uuid.v4());"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"variant\": \"custom\",\n  \"focusMinutes\": 1,\n  \"taskText\": \"Quick test session\",\n  \"clientSessionId\": \"{{clientSessionId2}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sessions/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sessions",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Quick Session (After 50s)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Has tree data\", function () {",
+									"    pm.expect(response).to.have.property('tree');",
+									"    pm.expect(response.tree).to.have.property('stage');",
+									"    pm.expect(response.tree).to.have.property('glowLevel');",
+									"});",
+									"",
+									"pm.test(\"Has streak data\", function () {",
+									"    pm.expect(response).to.have.property('streak');",
+									"    pm.expect(response.streak).to.have.property('currentStreak');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"taskStatus\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sessions/{{quickSessionId}}/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sessions",
+								"{{quickSessionId}}",
+								"complete"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3 — Legacy Session (Backward Compatibility)",
+			"item": [
+				{
+					"name": "Submit Legacy Session (Instant)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Has tree data\", function () {",
+									"    pm.expect(response).to.have.property('tree');",
+									"});",
+									"",
+									"pm.test(\"Has streak data\", function () {",
+									"    pm.expect(response).to.have.property('streak');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique client session ID",
+									"const uuid = require('uuid');",
+									"pm.collectionVariables.set(\"legacySessionId\", uuid.v4());"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskText\": \"Legacy instant session\",\n  \"taskStatus\": \"completed\",\n  \"clientSessionId\": \"{{legacySessionId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sessions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sessions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4 — Leaderboard Privacy",
+			"item": [
+				{
+					"name": "Get Solo Leaderboard (Global)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has leaderboard array\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property('leaderboard');",
+									"    pm.expect(response.leaderboard).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/leaderboard/solo?scope=global&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"leaderboard",
+								"solo"
+							],
+							"query": [
+								{
+									"key": "scope",
+									"value": "global"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Solo Leaderboard (None)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Leaderboard is empty\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.leaderboard).to.be.an('array').that.is.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/leaderboard/solo?scope=none",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"leaderboard",
+								"solo"
+							],
+							"query": [
+								{
+									"key": "scope",
+									"value": "none"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "jwt",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "activeSessionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "quickSessionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "clientSessionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "clientSessionId2",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "legacySessionId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

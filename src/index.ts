@@ -33,7 +33,7 @@ app.get("/health", (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Dev-only route — manual midnight reset trigger (disabled in production)
+// Dev-only routes (disabled in production)
 // ---------------------------------------------------------------------------
 if (process.env.NODE_ENV !== "production") {
   app.post("/dev/midnight-reset", async (_req, res) => {
@@ -44,7 +44,54 @@ if (process.env.NODE_ENV !== "production") {
       res.status(500).json({ ok: false, error: String(err) });
     }
   });
+  
+  app.post("/dev/reset-tree", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ ok: false, error: "email is required" });
+      }
+      
+      const { prisma } = await import("./lib/prisma");
+      
+      // Find user
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ ok: false, error: "User not found" });
+      }
+      
+      // Calculate today's date in user's timezone
+      const now = new Date();
+      const offsetMinutes = user.utcOffset;
+      const localDate = new Date(now.getTime() + offsetMinutes * 60 * 1000);
+      const dateStr = localDate.toISOString().split("T")[0];
+      
+      // Delete today's tree and all sessions for today
+      await prisma.dailyTree.deleteMany({
+        where: { userId: user.id, date: dateStr }
+      });
+      
+      await prisma.session.deleteMany({
+        where: {
+          userId: user.id,
+          createdAt: {
+            gte: new Date(dateStr + "T00:00:00.000Z"),
+            lt: new Date(new Date(dateStr).getTime() + 24 * 60 * 60 * 1000)
+          }
+        }
+      });
+      
+      res.json({ 
+        ok: true, 
+        message: `Reset tree and sessions for ${email} on ${dateStr}` 
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+  
   console.log("[dev] POST /dev/midnight-reset enabled (development mode).");
+  console.log("[dev] POST /dev/reset-tree enabled (development mode).");
 }
 
 app.use("/api/v1/auth", authRouter);

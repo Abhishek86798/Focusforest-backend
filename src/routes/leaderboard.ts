@@ -7,10 +7,10 @@ import { getSoloLeaderboard, getGroupsLeaderboard } from "../services/leaderboar
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// Shared query schema — ?scope=global|friends&page=1&limit=20
+// Shared query schema — ?scope=global|none&page=1&limit=20
 // ---------------------------------------------------------------------------
 const leaderboardQuerySchema = z.object({
-  scope: z.enum(["global", "friends"]).default("global"),
+  scope: z.enum(["global", "none"]).default("global"),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -30,9 +30,8 @@ router.get(
       return;
     }
 
-    const { page, limit } = query.data;
-    // friends scope is a v2 feature; for now fall back to global silently
-    const entries = await getSoloLeaderboard(page, limit);
+    const { scope, page, limit } = query.data;
+    const entries = await getSoloLeaderboard(page, limit, scope);
     res.json({ leaderboard: entries, page, limit });
   }
 );

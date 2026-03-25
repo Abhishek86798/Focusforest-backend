@@ -14,8 +14,28 @@ const GROUPS_KEY = "leaderboard:groups";
 //
 // Called from midnightReset after streak update so the leaderboard reflects
 // the freshly-finalised tree.
+//
+// Privacy handling: If user has isPrivate=true, removes them from leaderboard.
+// If isPrivate=false, adds/updates their score.
 // ---------------------------------------------------------------------------
 export async function updateSoloLeaderboard(userId: string): Promise<void> {
+  // Fetch user's privacy setting
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isPrivate: true },
+  });
+
+  if (!user) {
+    throw new Error(`User ${userId} not found`);
+  }
+
+  // If user is private, remove from leaderboard and return early
+  if (user.isPrivate) {
+    await redis.zrem(SOLO_KEY, userId);
+    return;
+  }
+
+  // User is public — count completed trees and add/update their score
   const count = await prisma.dailyTree.count({
     where: { userId, stage: 4 },
   });
@@ -81,8 +101,14 @@ export type SoloLeaderboardEntry = {
 
 export async function getSoloLeaderboard(
   page: number,
-  limit: number
+  limit: number,
+  scope: string
 ): Promise<SoloLeaderboardEntry[]> {
+  // Handle "none" scope
+  if (scope === "none") {
+    return [];
+  }
+
   const start = (page - 1) * limit;
   const end = start + limit - 1;
 
@@ -100,11 +126,21 @@ export async function getSoloLeaderboard(
   // when withScores is true.
   const entries = raw as { member: string; score: number }[];
 
-  const userIds = entries.map((e) => e.member);
+  // Filter out any invalid entries (undefined member or score)
+  const validEntries = entries.filter(
+    (e) => e && e.member !== undefined && e.member !== null && typeof e.score === 'number'
+  );
 
-  // Batch-fetch user profile + streak
+  if (validEntries.length === 0) return [];
+
+  const userIds = validEntries.map((e) => e.member);
+
+  // Batch-fetch user profile + streak, filtering out private users
   const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
+    where: { 
+      id: { in: userIds },
+      isPrivate: false
+    },
     select: {
       id: true,
       name: true,
@@ -114,16 +150,21 @@ export async function getSoloLeaderboard(
 
   const userMap = new Map(users.map((u) => [u.id, u]));
 
-  return entries.map((entry, idx) => {
-    const user = userMap.get(entry.member);
-    return {
-      rank: start + idx + 1,
-      userId: entry.member,
-      name: user?.name ?? "Unknown",
-      totalTrees: entry.score,
-      currentStreak: user?.streak?.currentStreak ?? 0,
-    };
-  });
+  // Only include users that passed the privacy filter and recalculate ranks
+  const filtered = validEntries
+    .filter(entry => userMap.has(entry.member))
+    .map((entry, idx) => {
+      const user = userMap.get(entry.member)!;
+      return {
+        rank: start + idx + 1,
+        userId: entry.member,
+        name: user.name,
+        totalTrees: entry.score,
+        currentStreak: user.streak?.currentStreak ?? 0,
+      };
+    });
+
+  return filtered;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +195,14 @@ export async function getGroupsLeaderboard(
 
   const entries = raw as { member: string; score: number }[];
 
-  const groupIds = entries.map((e) => e.member);
+  // Filter out any invalid entries (undefined member or score)
+  const validEntries = entries.filter(
+    (e) => e && e.member !== undefined && e.member !== null && typeof e.score === 'number'
+  );
+
+  if (validEntries.length === 0) return [];
+
+  const groupIds = validEntries.map((e) => e.member);
 
   const groups = await prisma.group.findMany({
     where: { id: { in: groupIds } },
@@ -167,7 +215,7 @@ export async function getGroupsLeaderboard(
 
   const groupMap = new Map(groups.map((g) => [g.id, g]));
 
-  return entries.map((entry, idx) => {
+  return validEntries.map((entry, idx) => {
     const group = groupMap.get(entry.member);
     return {
       rank: start + idx + 1,

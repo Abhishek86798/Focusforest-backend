@@ -1,0 +1,466 @@
+{
+	"id": "c09c5493-8aa6-4a5b-9c82-b63b8afabf70",
+	"name": "FocusForest — Immersive Mode (v2)",
+	"timestamp": "2026-03-25T16:08:42.451Z",
+	"collection_id": "41545406-95d4445d-bbe8-4ba7-8075-ea0b1db29879",
+	"folder_id": 0,
+	"environment_id": "0",
+	"totalPass": 20,
+	"delay": 0,
+	"persist": true,
+	"status": "finished",
+	"startedAt": "2026-03-25T16:07:49.431Z",
+	"totalFail": 4,
+	"results": [
+		{
+			"id": "9b9bd134-8b50-4d38-baf6-45e0453b2dda",
+			"name": "Login (Auto)",
+			"url": "http://localhost:3000/api/v1/auth/login",
+			"time": 5707,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Login successful": true
+			},
+			"testPassFailCounts": {
+				"Login successful": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5707
+			],
+			"allTests": [
+				{
+					"Login successful": true
+				}
+			]
+		},
+		{
+			"id": "7a5367ec-6951-4845-abe6-6ff86345885f",
+			"name": "Get Profile",
+			"url": "http://localhost:3000/api/v1/auth/me",
+			"time": 1950,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"Has isPrivate field": false
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has isPrivate field": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				1950
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"Has isPrivate field": false
+				}
+			]
+		},
+		{
+			"id": "38670e16-3af4-47d4-9ff4-3a2fdd05cc65",
+			"name": "Update Profile (Set Private)",
+			"url": "http://localhost:3000/api/v1/auth/profile",
+			"time": 3436,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"isPrivate is true": true
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"isPrivate is true": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				3436
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"isPrivate is true": true
+				}
+			]
+		},
+		{
+			"id": "d16852d8-a19c-4270-8889-bc4614ebf1a7",
+			"name": "Update Profile (Set Public)",
+			"url": "http://localhost:3000/api/v1/auth/profile",
+			"time": 7146,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"isPrivate is false": true
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"isPrivate is false": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				7146
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"isPrivate is false": true
+				}
+			]
+		},
+		{
+			"id": "dd1a803b-4a4f-4d32-a9b5-7e9e3e22cd19",
+			"name": "Start Session (25min Classic)",
+			"url": "http://localhost:3000/api/v1/sessions/start",
+			"time": 5494,
+			"responseCode": {
+				"code": 201,
+				"name": "Created"
+			},
+			"tests": {
+				"Status 201": true,
+				"Has sessionId": true,
+				"Has expectedEndAt": true
+			},
+			"testPassFailCounts": {
+				"Status 201": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has sessionId": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has expectedEndAt": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5494
+			],
+			"allTests": [
+				{
+					"Status 201": true,
+					"Has sessionId": true,
+					"Has expectedEndAt": true
+				}
+			]
+		},
+		{
+			"id": "b41dfd86-5953-4192-bf7b-e25f14316fff",
+			"name": "Complete Session (Too Early - Should Fail)",
+			"url": "http://localhost:3000/api/v1/sessions/1e8d7376-473c-4d43-a64a-0c326b7513ff/complete",
+			"time": 1988,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status 400 SESSION_TOO_SHORT": true
+			},
+			"testPassFailCounts": {
+				"Status 400 SESSION_TOO_SHORT": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1988
+			],
+			"allTests": [
+				{
+					"Status 400 SESSION_TOO_SHORT": true
+				}
+			]
+		},
+		{
+			"id": "c5872a70-83fd-41aa-a183-c05db2d37222",
+			"name": "Abandon Session",
+			"url": "http://localhost:3000/api/v1/sessions/1e8d7376-473c-4d43-a64a-0c326b7513ff/abandon",
+			"time": 3452,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"Has success message": true
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has success message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				3452
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"Has success message": true
+				}
+			]
+		},
+		{
+			"id": "d4ce64fb-2bb9-437a-a61d-19042c81ebf5",
+			"name": "Start Session (1min Sprint for Quick Test)",
+			"url": "http://localhost:3000/api/v1/sessions/start",
+			"time": 5030,
+			"responseCode": {
+				"code": 201,
+				"name": "Created"
+			},
+			"tests": {
+				"Status 201": true
+			},
+			"testPassFailCounts": {
+				"Status 201": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5030
+			],
+			"allTests": [
+				{
+					"Status 201": true
+				}
+			]
+		},
+		{
+			"id": "3345c54d-37a1-4ad6-8fe0-a04cc86ba9d2",
+			"name": "Complete Quick Session (After 50s)",
+			"url": "http://localhost:3000/api/v1/sessions/44484a3d-2f17-4541-953c-3b2c1f49eeea/complete",
+			"time": 2012,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status 200": false,
+				"Has tree data": false,
+				"Has streak data": false
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Has tree data": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Has streak data": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2012
+			],
+			"allTests": [
+				{
+					"Status 200": false,
+					"Has tree data": false,
+					"Has streak data": false
+				}
+			]
+		},
+		{
+			"id": "20e0ea11-5329-476d-8395-d203c0892f66",
+			"name": "Submit Legacy Session (Instant)",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 13476,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"Has tree data": true,
+				"Has streak data": true
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has tree data": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has streak data": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				13476
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"Has tree data": true,
+					"Has streak data": true
+				}
+			]
+		},
+		{
+			"id": "643d8a2d-dfef-464a-9f28-f8914d82cfd0",
+			"name": "Get Solo Leaderboard (Global)",
+			"url": "http://localhost:3000/api/v1/leaderboard/solo?scope=global&page=1&limit=10",
+			"time": 754,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"Has leaderboard array": true
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Has leaderboard array": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				754
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"Has leaderboard array": true
+				}
+			]
+		},
+		{
+			"id": "4efc5d29-6e62-42cd-9517-ac057f67e5bc",
+			"name": "Get Solo Leaderboard (None)",
+			"url": "http://localhost:3000/api/v1/leaderboard/solo?scope=none",
+			"time": 258,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status 200": true,
+				"Leaderboard is empty": true
+			},
+			"testPassFailCounts": {
+				"Status 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Leaderboard is empty": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				258
+			],
+			"allTests": [
+				{
+					"Status 200": true,
+					"Leaderboard is empty": true
+				}
+			]
+		}
+	],
+	"count": 1,
+	"totalTime": 50703,
+	"collection": {
+		"requests": [
+			{
+				"id": "9b9bd134-8b50-4d38-baf6-45e0453b2dda",
+				"method": "POST"
+			},
+			{
+				"id": "7a5367ec-6951-4845-abe6-6ff86345885f",
+				"method": "GET"
+			},
+			{
+				"id": "38670e16-3af4-47d4-9ff4-3a2fdd05cc65",
+				"method": "PATCH"
+			},
+			{
+				"id": "d16852d8-a19c-4270-8889-bc4614ebf1a7",
+				"method": "PATCH"
+			},
+			{
+				"id": "dd1a803b-4a4f-4d32-a9b5-7e9e3e22cd19",
+				"method": "POST"
+			},
+			{
+				"id": "b41dfd86-5953-4192-bf7b-e25f14316fff",
+				"method": "POST"
+			},
+			{
+				"id": "c5872a70-83fd-41aa-a183-c05db2d37222",
+				"method": "POST"
+			},
+			{
+				"id": "d4ce64fb-2bb9-437a-a61d-19042c81ebf5",
+				"method": "POST"
+			},
+			{
+				"id": "3345c54d-37a1-4ad6-8fe0-a04cc86ba9d2",
+				"method": "POST"
+			},
+			{
+				"id": "20e0ea11-5329-476d-8395-d203c0892f66",
+				"method": "POST"
+			},
+			{
+				"id": "643d8a2d-dfef-464a-9f28-f8914d82cfd0",
+				"method": "GET"
+			},
+			{
+				"id": "4efc5d29-6e62-42cd-9517-ac057f67e5bc",
+				"method": "GET"
+			}
+		]
+	}
+}

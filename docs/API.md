@@ -104,9 +104,50 @@ Get the current authenticated user's profile.
   "name": "Alice",
   "avatarUrl": "https://...",
   "utcOffset": 330,
+  "isPrivate": false,
   "createdAt": "2025-03-01T00:00:00.000Z"
 }
 ```
+
+---
+
+### `PATCH /auth/profile`
+
+Update the current authenticated user's profile settings.
+
+**Request body (Zod schema):**
+```ts
+z.object({
+  name: z.string().min(1).max(50).optional(),
+  avatarUrl: z.string().nullable().optional(),
+  isPrivate: z.boolean().optional(),
+})
+```
+
+**Request example:**
+```json
+{
+  "name": "Alice",
+  "isPrivate": true
+}
+```
+
+**Response `200`:**
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "Alice",
+  "avatarUrl": null,
+  "utcOffset": 330,
+  "isPrivate": true,
+  "createdAt": "2025-03-01T00:00:00.000Z"
+}
+```
+
+> **Privacy Note:** When `isPrivate` is set to `true`, the user will be excluded from the global solo leaderboard. Setting it to `false` (default) makes the user visible on the global leaderboard. Privacy settings do not affect group leaderboards.
+
+**Errors:** `400` validation, `401` unauthorized, `404` user not found.
 
 ---
 
@@ -150,6 +191,88 @@ stageProgress  = (focusMinutes / 25) × taskMultiplier
 ```
 
 **Errors:** `400` validation, `409` duplicate `clientSessionId`.
+
+---
+
+### `POST /sessions/start`
+
+Start an immersive mode session with live tracking.
+
+**Request body (Zod schema):**
+```ts
+z.object({
+  variant: z.enum(["sprint", "classic", "deep_work", "flow", "custom"]),
+  focusMinutes: z.number().int().min(1).max(240),
+  taskText: z.string().max(200).optional(),
+  clientSessionId: z.string().uuid(),
+})
+```
+
+**Response `201`:**
+```json
+{
+  "sessionId": "uuid",
+  "expectedEndAt": "2025-03-10T15:25:00.000Z"
+}
+```
+
+**Errors:** `400` validation, `401` unauthorized, `409` duplicate `clientSessionId`.
+
+---
+
+### `POST /sessions/:id/complete`
+
+Complete an active immersive mode session. Validates that at least 80% of the expected focus time has elapsed.
+
+**Request body (Zod schema):**
+```ts
+z.object({
+  taskStatus: z.enum(["completed", "carried", "none"]),
+})
+```
+
+**Response `200`:**
+```json
+{
+  "tree": {
+    "stage": 2,
+    "glowLevel": 3,
+    "stageProgress": 2.5,
+    "totalSessions": 3,
+    "sessionsWithTask": 2
+  },
+  "streak": {
+    "currentStreak": 5
+  }
+}
+```
+
+**Errors:** 
+- `400` validation
+- `400 SESSION_TOO_SHORT` — elapsed time < 80% of focusMinutes
+- `400 SESSION_NOT_ACTIVE` — session already completed or abandoned
+- `403` not session owner
+- `404` session not found
+
+---
+
+### `POST /sessions/:id/abandon`
+
+Abandon an active immersive mode session without completing it.
+
+**Request body:** None
+
+**Response `200`:**
+```json
+{
+  "message": "Session abandoned successfully."
+}
+```
+
+**Errors:**
+- `400 SESSION_NOT_ACTIVE` — session already completed or abandoned
+- `403` not session owner
+- `404` session not found
 
 ---
 
@@ -394,7 +517,7 @@ Solo rankings by total all-time completed trees.
 **Query params:**
 | Param | Type | Description |
 |-------|------|-------------|
-| `scope` | `global \| friends` | `friends` = members across your groups. Default `global`. |
+| `scope` | `global \| none` | `global` = all public users, `none` = empty leaderboard. Default `global`. |
 | `page` | `number` | Default `1`. |
 | `limit` | `number` | Default `20`, max `50`. |
 
@@ -416,6 +539,10 @@ Solo rankings by total all-time completed trees.
   ]
 }
 ```
+
+> **Privacy Note:** Users who have set `isPrivate: true` in their profile are excluded from the global leaderboard. Only public users (`isPrivate: false`) appear in the results. Privacy settings do not affect group leaderboards.
+
+**Errors:** `400` invalid scope value, `401` unauthorized.
 
 ---
 

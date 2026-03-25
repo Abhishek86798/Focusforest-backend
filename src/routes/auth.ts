@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { apiError } from "../lib/apiError";
+import { updateSoloLeaderboard } from "../services/leaderboardService";
 
 const router = Router();
 
@@ -203,6 +204,66 @@ router.get(
       name: user.name,
       avatarUrl: user.avatarUrl,
       utcOffset: user.utcOffset,
+      isPrivate: user.isPrivate,
+      createdAt: user.createdAt,
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// PATCH /api/v1/auth/profile
+// ---------------------------------------------------------------------------
+const updateProfileSchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  avatarUrl: z.string().nullable().optional(),
+  isPrivate: z.boolean().optional(),
+});
+
+router.patch(
+  "/profile",
+  requireAuth,
+  validate(updateProfileSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const updates = req.body as z.infer<typeof updateProfileSchema>;
+    const userId = req.userId!;
+
+    // Check if isPrivate is being toggled from true to false
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPrivate: true },
+    });
+
+    if (!currentUser) {
+      res.status(404).json(apiError("USER_NOT_FOUND", "User not found."));
+      return;
+    }
+
+    const wasPrivate = currentUser.isPrivate;
+    const willBePublic = updates.isPrivate === false && wasPrivate;
+
+    // Update user profile
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updates,
+    });
+
+    // If user is going from private to public, immediately update leaderboard
+    if (willBePublic) {
+      try {
+        await updateSoloLeaderboard(userId);
+      } catch (err) {
+        console.error(`Failed to update leaderboard for user ${userId}:`, err);
+        // Non-fatal — profile update succeeded
+      }
+    }
+
+    res.status(200).json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      utcOffset: user.utcOffset,
+      isPrivate: user.isPrivate,
       createdAt: user.createdAt,
     });
   }

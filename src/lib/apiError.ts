@@ -20,6 +20,10 @@ export type ErrorCode =
   | "GROUP_FULL"
   | "INVITE_DISABLED"
   | "SELF_REMOVE_FORBIDDEN"
+  | "SESSION_NOT_FOUND"
+  | "SESSION_NOT_ACTIVE"
+  | "SESSION_TOO_SHORT"
+  | "INVALID_SESSION"
   | "INTERNAL_ERROR";
 
 export function apiError(

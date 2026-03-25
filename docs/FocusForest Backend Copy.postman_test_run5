@@ -1,0 +1,1193 @@
+{
+	"id": "9b356f44-9768-400e-b736-b8d78401d7cf",
+	"name": "FocusForest Backend Copy",
+	"timestamp": "2026-03-25T16:26:36.136Z",
+	"collection_id": "41545406-37b90055-114a-48e3-8d4c-07bd9268eba4",
+	"folder_id": 0,
+	"environment_id": "0",
+	"totalPass": 77,
+	"delay": 0,
+	"persist": true,
+	"status": "finished",
+	"startedAt": "2026-03-25T16:25:04.212Z",
+	"totalFail": 14,
+	"results": [
+		{
+			"id": "86645f40-162a-43b7-83f5-b3242b1b6cb6",
+			"name": "GET /health",
+			"url": "http://localhost:3000/health",
+			"time": 8,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200": true,
+				"Response has status ok": true,
+				"Response has timestamp": true
+			},
+			"testPassFailCounts": {
+				"Status is 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has status ok": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has timestamp": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				8
+			],
+			"allTests": [
+				{
+					"Status is 200": true,
+					"Response has status ok": true,
+					"Response has timestamp": true
+				}
+			]
+		},
+		{
+			"id": "627c1619-cfa6-4889-b8a0-30c5e3b3dd78",
+			"name": "POST /auth/signup",
+			"url": "http://localhost:3000/api/v1/auth/signup",
+			"time": 5058,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 201 (new user) or 409 (already registered — re-run)": true,
+				"Error code is EMAIL_TAKEN": true
+			},
+			"testPassFailCounts": {
+				"Status is 201 (new user) or 409 (already registered — re-run)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is EMAIL_TAKEN": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5058
+			],
+			"allTests": [
+				{
+					"Status is 201 (new user) or 409 (already registered — re-run)": true,
+					"Error code is EMAIL_TAKEN": true
+				}
+			]
+		},
+		{
+			"id": "8e6ddbfa-b581-4ff8-88eb-0e7c59624ab4",
+			"name": "POST /auth/login",
+			"url": "http://localhost:3000/api/v1/auth/login",
+			"time": 8645,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response contains accessToken": true,
+				"Response contains user object": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains accessToken": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains user object": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				8645
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response contains accessToken": true,
+					"Response contains user object": true
+				}
+			]
+		},
+		{
+			"id": "84eab388-98c7-454c-b3b4-3b7413917bbd",
+			"name": "GET /auth/me",
+			"url": "http://localhost:3000/api/v1/auth/me",
+			"time": 3945,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has id": true,
+				"Response has email": true,
+				"Response has name": true,
+				"utcOffset equals 330 (IST)": true,
+				"Response has createdAt": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has id": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has email": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has name": {
+					"pass": 1,
+					"fail": 0
+				},
+				"utcOffset equals 330 (IST)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has createdAt": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				3945
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has id": true,
+					"Response has email": true,
+					"Response has name": true,
+					"utcOffset equals 330 (IST)": true,
+					"Response has createdAt": true
+				}
+			]
+		},
+		{
+			"id": "88645a45-cea0-444e-bd06-1dd7da930952",
+			"name": "POST /auth/logout",
+			"url": "http://localhost:3000/api/v1/auth/logout",
+			"time": 484,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				484
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has message": true
+				}
+			]
+		},
+		{
+			"id": "02cb6a13-0de5-4ce3-b3ca-7ed37e52d9ff",
+			"name": "POST /sessions — Classic, task completed",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 2175,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 200 OK": false,
+				"tree.stageProgress equals 1.5 (25/25 × 1.5)": false,
+				"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)": false,
+				"tree.stage equals 1 (Sprout at 1.5 progress)": false,
+				"tree.totalSessions equals 1": false,
+				"Response has streak object": false
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.stageProgress equals 1.5 (25/25 × 1.5)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.stage equals 1 (Sprout at 1.5 progress)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.totalSessions equals 1": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Response has streak object": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2175
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": false,
+					"tree.stageProgress equals 1.5 (25/25 × 1.5)": false,
+					"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)": false,
+					"tree.stage equals 1 (Sprout at 1.5 progress)": false,
+					"tree.totalSessions equals 1": false,
+					"Response has streak object": false
+				}
+			]
+		},
+		{
+			"id": "ac644580-ef81-499a-95d0-74fa899ecf7b",
+			"name": "POST /sessions — Dedup test (same clientSessionId → 409)",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 1991,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 409 Conflict (dedup)": true,
+				"Error code is DUPLICATE_SESSION": true,
+				"Error has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 409 Conflict (dedup)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is DUPLICATE_SESSION": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1991
+			],
+			"allTests": [
+				{
+					"Status is 409 Conflict (dedup)": true,
+					"Error code is DUPLICATE_SESSION": true,
+					"Error has message": true
+				}
+			]
+		},
+		{
+			"id": "49acd16f-60f5-4708-8e43-949a2ffec092",
+			"name": "POST /sessions — Classic, no task",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 2566,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 200 OK": false,
+				"tree.stageProgress equals 2.5 (cumulative)": false,
+				"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)": false,
+				"tree.totalSessions equals 2": false
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.stageProgress equals 2.5 (cumulative)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.totalSessions equals 2": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2566
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": false,
+					"tree.stageProgress equals 2.5 (cumulative)": false,
+					"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)": false,
+					"tree.totalSessions equals 2": false
+				}
+			]
+		},
+		{
+			"id": "56b02f6d-9d23-439a-bb4d-cb71851ffd3d",
+			"name": "POST /sessions — Sprint, task carried",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 16955,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)": false,
+				"tree.stage equals 3 (Young Tree at ≥3.0)": false,
+				"tree.totalSessions equals 3": false
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.stage equals 3 (Young Tree at ≥3.0)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"tree.totalSessions equals 3": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				16955
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)": false,
+					"tree.stage equals 3 (Young Tree at ≥3.0)": false,
+					"tree.totalSessions equals 3": false
+				}
+			]
+		},
+		{
+			"id": "8226ddc2-c3da-49e3-b0af-61c3caaf82e7",
+			"name": "GET /sessions — Session history",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 4243,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has sessions array": true,
+				"sessions array has total field": true,
+				"Array length is 3 (dedup rejected one)": false,
+				"Each session has required fields": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has sessions array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"sessions array has total field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Array length is 3 (dedup rejected one)": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Each session has required fields": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				4243
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has sessions array": true,
+					"sessions array has total field": true,
+					"Array length is 3 (dedup rejected one)": false,
+					"Each session has required fields": true
+				}
+			]
+		},
+		{
+			"id": "29431f90-d53b-4a44-aa16-cdba70ee5d6a",
+			"name": "GET /sessions — With date filter",
+			"url": "http://localhost:3000/api/v1/sessions?startDate=2026-01-01&endDate=2026-12-31&limit=10&offset=0",
+			"time": 2176,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has sessions array": true,
+				"Response has total count": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has sessions array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has total count": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2176
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has sessions array": true,
+					"Response has total count": true
+				}
+			]
+		},
+		{
+			"id": "edbcb321-73c9-42c6-b565-dc878d98b238",
+			"name": "GET /trees/today",
+			"url": "http://localhost:3000/api/v1/trees/today",
+			"time": 3592,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has date field": true,
+				"Response has stage field": true,
+				"Response has glowLevel field": true,
+				"Response has totalSessions field": true,
+				"isBare is false (day not over yet)": true,
+				"finalisedAt is null (day not finalised yet)": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has date field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has stage field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has glowLevel field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has totalSessions field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"isBare is false (day not over yet)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"finalisedAt is null (day not finalised yet)": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				3592
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has date field": true,
+					"Response has stage field": true,
+					"Response has glowLevel field": true,
+					"Response has totalSessions field": true,
+					"isBare is false (day not over yet)": true,
+					"finalisedAt is null (day not finalised yet)": true
+				}
+			]
+		},
+		{
+			"id": "47ab67ba-4a03-4fb0-bb89-73196defd70b",
+			"name": "GET /trees/calendar?month=3&year=2026",
+			"url": "http://localhost:3000/api/v1/trees/calendar?month=3&year=2026",
+			"time": 2215,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has trees array": true,
+				"Each tree has date, stage, glowLevel": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has trees array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Each tree has date, stage, glowLevel": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2215
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has trees array": true,
+					"Each tree has date, stage, glowLevel": true
+				}
+			]
+		},
+		{
+			"id": "90393af8-dde9-4a6e-80a4-95d6e2492d1b",
+			"name": "GET /trees/week/2026-W12",
+			"url": "http://localhost:3000/api/v1/trees/week/2026-W12",
+			"time": 2275,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has weekId": true,
+				"Response has 7 day slots": true,
+				"Response has complete boolean flag": true,
+				"Response has startDate and endDate": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has weekId": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has 7 day slots": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has complete boolean flag": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has startDate and endDate": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2275
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has weekId": true,
+					"Response has 7 day slots": true,
+					"Response has complete boolean flag": true,
+					"Response has startDate and endDate": true
+				}
+			]
+		},
+		{
+			"id": "2f62d32e-931b-4fa2-94ce-ac4a06c6654d",
+			"name": "POST /groups — Create group",
+			"url": "http://localhost:3000/api/v1/groups",
+			"time": 5899,
+			"responseCode": {
+				"code": 201,
+				"name": "Created"
+			},
+			"tests": {
+				"Status is 201 Created": true,
+				"Response has id": true,
+				"Response has name": true,
+				"Response has inviteCode": true,
+				"inviteCode is 6 characters": true,
+				"memberCount equals 1": true
+			},
+			"testPassFailCounts": {
+				"Status is 201 Created": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has id": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has name": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has inviteCode": {
+					"pass": 1,
+					"fail": 0
+				},
+				"inviteCode is 6 characters": {
+					"pass": 1,
+					"fail": 0
+				},
+				"memberCount equals 1": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5899
+			],
+			"allTests": [
+				{
+					"Status is 201 Created": true,
+					"Response has id": true,
+					"Response has name": true,
+					"Response has inviteCode": true,
+					"inviteCode is 6 characters": true,
+					"memberCount equals 1": true
+				}
+			]
+		},
+		{
+			"id": "66ff7090-2606-44ae-93d6-e6d65f56cac5",
+			"name": "GET /groups/:groupId — Group details",
+			"url": "http://localhost:3000/api/v1/groups/5cb2517d-b687-4f9b-b3cd-84a3d015c1b1",
+			"time": 5890,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has members array": true,
+				"members array has 1 entry (creator only)": true,
+				"Each member has userId, name, currentStreak, joinedAt": true,
+				"Response has forestStats": true,
+				"Response has adminUserId": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has members array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"members array has 1 entry (creator only)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Each member has userId, name, currentStreak, joinedAt": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has forestStats": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has adminUserId": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5890
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has members array": true,
+					"members array has 1 entry (creator only)": true,
+					"Each member has userId, name, currentStreak, joinedAt": true,
+					"Response has forestStats": true,
+					"Response has adminUserId": true
+				}
+			]
+		},
+		{
+			"id": "505a364a-7ad6-43db-b92a-2167d52f44ce",
+			"name": "GET /groups/:groupId/calendar",
+			"url": "http://localhost:3000/api/v1/groups/5cb2517d-b687-4f9b-b3cd-84a3d015c1b1/calendar?month=3&year=2026",
+			"time": 5448,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has days array": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has days array": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5448
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has days array": true
+				}
+			]
+		},
+		{
+			"id": "3d1204c8-556b-4e4f-ae43-01caf91a92d4",
+			"name": "POST /groups/join — Own group → 409 ALREADY_MEMBER",
+			"url": "http://localhost:3000/api/v1/groups/join",
+			"time": 4053,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 409 Conflict (already member)": true,
+				"Error code is ALREADY_MEMBER": true,
+				"Error has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 409 Conflict (already member)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is ALREADY_MEMBER": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				4053
+			],
+			"allTests": [
+				{
+					"Status is 409 Conflict (already member)": true,
+					"Error code is ALREADY_MEMBER": true,
+					"Error has message": true
+				}
+			]
+		},
+		{
+			"id": "368f1d01-928a-42df-a899-96be99627463",
+			"name": "DELETE /groups/:groupId/members/:userId — Leave group",
+			"url": "http://localhost:3000/api/v1/groups/5cb2517d-b687-4f9b-b3cd-84a3d015c1b1/members/5e3fe997-0c9a-4eea-9e7b-a0ad11e10703",
+			"time": 5726,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has success message": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has success message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				5726
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has success message": true
+				}
+			]
+		},
+		{
+			"id": "ee824715-5e59-4cdd-9522-9daafaeffbdb",
+			"name": "GET /auth/me — No token → 401",
+			"url": "http://localhost:3000/api/v1/auth/me",
+			"time": 6,
+			"responseCode": {
+				"code": 401,
+				"name": "Unauthorized"
+			},
+			"tests": {
+				"Status is 401 Unauthorized": true,
+				"Error envelope has code and message": true
+			},
+			"testPassFailCounts": {
+				"Status is 401 Unauthorized": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope has code and message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				6
+			],
+			"allTests": [
+				{
+					"Status is 401 Unauthorized": true,
+					"Error envelope has code and message": true
+				}
+			]
+		},
+		{
+			"id": "a84af948-3319-4575-9a8d-3e5f566634fc",
+			"name": "POST /sessions — Invalid variant → 400",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 393,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status is 400 Bad Request": true,
+				"Error code is VALIDATION_ERROR": true,
+				"Error envelope is correct shape": true
+			},
+			"testPassFailCounts": {
+				"Status is 400 Bad Request": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is VALIDATION_ERROR": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope is correct shape": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				393
+			],
+			"allTests": [
+				{
+					"Status is 400 Bad Request": true,
+					"Error code is VALIDATION_ERROR": true,
+					"Error envelope is correct shape": true
+				}
+			]
+		},
+		{
+			"id": "723f0386-1f09-47f5-82ab-7353d824b124",
+			"name": "POST /sessions — Missing required fields → 400",
+			"url": "http://localhost:3000/api/v1/sessions",
+			"time": 256,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status is 400 Bad Request": true,
+				"Error code is VALIDATION_ERROR": true,
+				"Error envelope matches { error: { code, message } }": true
+			},
+			"testPassFailCounts": {
+				"Status is 400 Bad Request": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is VALIDATION_ERROR": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope matches { error: { code, message } }": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				256
+			],
+			"allTests": [
+				{
+					"Status is 400 Bad Request": true,
+					"Error code is VALIDATION_ERROR": true,
+					"Error envelope matches { error: { code, message } }": true
+				}
+			]
+		},
+		{
+			"id": "d1717acb-91e7-4541-af2b-894040b2f1f3",
+			"name": "GET /groups/nonexistent-id → 404",
+			"url": "http://localhost:3000/api/v1/groups/nonexistent-id",
+			"time": 1952,
+			"responseCode": {
+				"code": 404,
+				"name": "Not Found"
+			},
+			"tests": {
+				"Status is 404 or 403 (not found or not a member)": true,
+				"Error envelope has code and message": true
+			},
+			"testPassFailCounts": {
+				"Status is 404 or 403 (not found or not a member)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope has code and message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1952
+			],
+			"allTests": [
+				{
+					"Status is 404 or 403 (not found or not a member)": true,
+					"Error envelope has code and message": true
+				}
+			]
+		},
+		{
+			"id": "cf1e587d-df1b-4c33-9ac6-1a2fb033a18c",
+			"name": "POST /groups/join — Wrong invite code → 404",
+			"url": "http://localhost:3000/api/v1/groups/join",
+			"time": 1890,
+			"responseCode": {
+				"code": 404,
+				"name": "Not Found"
+			},
+			"tests": {
+				"Status is 404 Not Found": true,
+				"Error code is INVALID_INVITE_CODE": true,
+				"Error envelope has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 404 Not Found": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is INVALID_INVITE_CODE": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1890
+			],
+			"allTests": [
+				{
+					"Status is 404 Not Found": true,
+					"Error code is INVALID_INVITE_CODE": true,
+					"Error envelope has message": true
+				}
+			]
+		},
+		{
+			"id": "766a394a-dc15-46b2-b670-cdfd77e052ed",
+			"name": "POST /dev/midnight-reset",
+			"url": "http://localhost:3000/dev/midnight-reset",
+			"time": 1684,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has ok: true": true,
+				"Response has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has ok: true": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1684
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has ok: true": true,
+					"Response has message": true
+				}
+			]
+		}
+	],
+	"count": 1,
+	"totalTime": 89525,
+	"collection": {
+		"requests": [
+			{
+				"id": "86645f40-162a-43b7-83f5-b3242b1b6cb6",
+				"method": "GET"
+			},
+			{
+				"id": "627c1619-cfa6-4889-b8a0-30c5e3b3dd78",
+				"method": "POST"
+			},
+			{
+				"id": "8e6ddbfa-b581-4ff8-88eb-0e7c59624ab4",
+				"method": "POST"
+			},
+			{
+				"id": "84eab388-98c7-454c-b3b4-3b7413917bbd",
+				"method": "GET"
+			},
+			{
+				"id": "88645a45-cea0-444e-bd06-1dd7da930952",
+				"method": "POST"
+			},
+			{
+				"id": "02cb6a13-0de5-4ce3-b3ca-7ed37e52d9ff",
+				"method": "POST"
+			},
+			{
+				"id": "ac644580-ef81-499a-95d0-74fa899ecf7b",
+				"method": "POST"
+			},
+			{
+				"id": "49acd16f-60f5-4708-8e43-949a2ffec092",
+				"method": "POST"
+			},
+			{
+				"id": "56b02f6d-9d23-439a-bb4d-cb71851ffd3d",
+				"method": "POST"
+			},
+			{
+				"id": "8226ddc2-c3da-49e3-b0af-61c3caaf82e7",
+				"method": "GET"
+			},
+			{
+				"id": "29431f90-d53b-4a44-aa16-cdba70ee5d6a",
+				"method": "GET"
+			},
+			{
+				"id": "edbcb321-73c9-42c6-b565-dc878d98b238",
+				"method": "GET"
+			},
+			{
+				"id": "47ab67ba-4a03-4fb0-bb89-73196defd70b",
+				"method": "GET"
+			},
+			{
+				"id": "90393af8-dde9-4a6e-80a4-95d6e2492d1b",
+				"method": "GET"
+			},
+			{
+				"id": "2f62d32e-931b-4fa2-94ce-ac4a06c6654d",
+				"method": "POST"
+			},
+			{
+				"id": "66ff7090-2606-44ae-93d6-e6d65f56cac5",
+				"method": "GET"
+			},
+			{
+				"id": "505a364a-7ad6-43db-b92a-2167d52f44ce",
+				"method": "GET"
+			},
+			{
+				"id": "3d1204c8-556b-4e4f-ae43-01caf91a92d4",
+				"method": "POST"
+			},
+			{
+				"id": "368f1d01-928a-42df-a899-96be99627463",
+				"method": "DELETE"
+			},
+			{
+				"id": "ee824715-5e59-4cdd-9522-9daafaeffbdb",
+				"method": "GET"
+			},
+			{
+				"id": "a84af948-3319-4575-9a8d-3e5f566634fc",
+				"method": "POST"
+			},
+			{
+				"id": "723f0386-1f09-47f5-82ab-7353d824b124",
+				"method": "POST"
+			},
+			{
+				"id": "d1717acb-91e7-4541-af2b-894040b2f1f3",
+				"method": "GET"
+			},
+			{
+				"id": "cf1e587d-df1b-4c33-9ac6-1a2fb033a18c",
+				"method": "POST"
+			},
+			{
+				"id": "766a394a-dc15-46b2-b670-cdfd77e052ed",
+				"method": "POST"
+			}
+		]
+	}
+}

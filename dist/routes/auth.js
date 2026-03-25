@@ -7,6 +7,7 @@ const prisma_1 = require("../lib/prisma");
 const auth_1 = require("../middleware/auth");
 const validate_1 = require("../middleware/validate");
 const apiError_1 = require("../lib/apiError");
+const leaderboardService_1 = require("../services/leaderboardService");
 const router = (0, express_1.Router)();
 // ---------------------------------------------------------------------------
 // POST /api/v1/auth/signup  [public]
@@ -166,6 +167,53 @@ router.get("/me", auth_1.requireAuth, async (req, res) => {
         name: user.name,
         avatarUrl: user.avatarUrl,
         utcOffset: user.utcOffset,
+        createdAt: user.createdAt,
+    });
+});
+// ---------------------------------------------------------------------------
+// PATCH /api/v1/auth/profile
+// ---------------------------------------------------------------------------
+const updateProfileSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1).max(50).optional(),
+    avatarUrl: zod_1.z.string().nullable().optional(),
+    isPrivate: zod_1.z.boolean().optional(),
+});
+router.patch("/profile", auth_1.requireAuth, (0, validate_1.validate)(updateProfileSchema), async (req, res) => {
+    const updates = req.body;
+    const userId = req.userId;
+    // Check if isPrivate is being toggled from true to false
+    const currentUser = await prisma_1.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isPrivate: true },
+    });
+    if (!currentUser) {
+        res.status(404).json((0, apiError_1.apiError)("USER_NOT_FOUND", "User not found."));
+        return;
+    }
+    const wasPrivate = currentUser.isPrivate;
+    const willBePublic = updates.isPrivate === false && wasPrivate;
+    // Update user profile
+    const user = await prisma_1.prisma.user.update({
+        where: { id: userId },
+        data: updates,
+    });
+    // If user is going from private to public, immediately update leaderboard
+    if (willBePublic) {
+        try {
+            await (0, leaderboardService_1.updateSoloLeaderboard)(userId);
+        }
+        catch (err) {
+            console.error(`Failed to update leaderboard for user ${userId}:`, err);
+            // Non-fatal — profile update succeeded
+        }
+    }
+    res.status(200).json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        utcOffset: user.utcOffset,
+        isPrivate: user.isPrivate,
         createdAt: user.createdAt,
     });
 });

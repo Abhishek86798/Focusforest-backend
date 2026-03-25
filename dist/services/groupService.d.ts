@@ -2,8 +2,8 @@ export declare function createGroup(userId: string, name: string): Promise<{
     id: string;
     name: string;
     createdAt: Date;
-    inviteCode: string;
     adminUserId: string;
+    inviteCode: string;
     memberCount: number;
 }>;
 export type JoinGroupError = {
