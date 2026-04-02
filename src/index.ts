@@ -16,9 +16,23 @@ const PORT = process.env.PORT ?? 3000;
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
+// Support comma-separated origins in APP_URL, e.g. "https://myapp.com,http://localhost:5173"
+const allowedOrigins: string[] = process.env.APP_URL
+  ? process.env.APP_URL.split(",").map((o) => o.trim())
+  : ["http://localhost:5173", "http://localhost:5174"];
+
 app.use(
   cors({
-    origin: process.env.APP_URL ?? "http://localhost:5173",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // In development, allow any localhost port
+      if (process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
     credentials: true, // required for httpOnly cookies
   })
 );
