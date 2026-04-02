@@ -324,4 +324,4 @@ Once your backend is live, update your frontend to use the production API URL:
 
 ---
 
-**Deployment complete! 🎉**
+**Deployment complete!
