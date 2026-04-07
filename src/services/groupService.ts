@@ -385,3 +385,322 @@ export async function removeMember(
 
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// getUserGroups
+// Returns all groups the authenticated user belongs to (for sidebar list).
+// Includes activeMemberCount (members with sessions today) and isAdmin flag.
+// ---------------------------------------------------------------------------
+export type UserGroupSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  memberCount: number;
+  activeMemberCount: number;
+  isAdmin: boolean;
+};
+
+export async function getUserGroups(userId: string): Promise<UserGroupSummary[]> {
+  // Fetch all groups where user is a member
+  const memberships = await prisma.groupMember.findMany({
+    where: { userId },
+    include: {
+      group: {
+        select: {
+          id: true,
+          name: true,
+          memberCount: true,
+          adminUserId: true,
+          createdAt: true,
+        },
+      },
+    },
+    orderBy: { joinedAt: "asc" },
+  });
+
+  // For each group, calculate activeMemberCount
+  const groups: UserGroupSummary[] = [];
+
+  for (const membership of memberships) {
+    const group = membership.group;
+
+    // Get all member IDs for this group
+    const allMembers = await prisma.groupMember.findMany({
+      where: { groupId: group.id },
+      select: { userId: true, user: { select: { utcOffset: true } } },
+    });
+
+    // Calculate today's date for each member based on their timezone
+    const now = new Date();
+    let activeMemberCount = 0;
+
+    for (const member of allMembers) {
+      const offsetMinutes = member.user.utcOffset;
+      const localDate = new Date(now.getTime() + offsetMinutes * 60 * 1000);
+      const todayDateStr = localDate.toISOString().split("T")[0];
+      const todayDate = new Date(todayDateStr + "T00:00:00.000Z");
+
+      // Check if this member has a daily_trees row for today with totalSessions > 0
+      const todayTree = await prisma.dailyTree.findUnique({
+        where: {
+          userId_date: {
+            userId: member.userId,
+            date: todayDate,
+          },
+        },
+        select: { totalSessions: true },
+      });
+
+      if (todayTree && todayTree.totalSessions > 0) {
+        activeMemberCount++;
+      }
+    }
+
+    groups.push({
+      id: group.id,
+      name: group.name,
+      description: null, // Not in schema yet, placeholder for future
+      memberCount: group.memberCount,
+      activeMemberCount,
+      isAdmin: group.adminUserId === userId,
+    });
+  }
+
+  return groups;
+}
+
+// ---------------------------------------------------------------------------
+// getGroupStats
+// Returns aggregate stat tiles for the selected group.
+// Guard: user must be a member.
+// ---------------------------------------------------------------------------
+export type GroupStats = {
+  totalMinutes: number;
+  treesCompleted: number;
+  sessions: number;
+  todayTreeCount: number;
+};
+
+export type GetGroupStatsError =
+  | { code: "GROUP_NOT_FOUND" }
+  | { code: "NOT_GROUP_MEMBER" };
+
+export type GetGroupStatsResult =
+  | { ok: true; stats: GroupStats }
+  | { ok: false; error: GetGroupStatsError };
+
+export async function getGroupStats(
+  groupId: string,
+  requestingUserId: string
+): Promise<GetGroupStatsResult> {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      members: {
+        select: { userId: true, user: { select: { utcOffset: true } } },
+      },
+    },
+  });
+
+  if (!group) {
+    return { ok: false, error: { code: "GROUP_NOT_FOUND" } };
+  }
+
+  // Auth guard: requester must be a member
+  const isMember = group.members.some((m) => m.userId === requestingUserId);
+  if (!isMember) {
+    return { ok: false, error: { code: "NOT_GROUP_MEMBER" } };
+  }
+
+  const memberUserIds = group.members.map((m) => m.userId);
+
+  // totalMinutes — sum of focus_minutes for completed sessions
+  const totalMinutesResult = await prisma.session.aggregate({
+    where: {
+      userId: { in: memberUserIds },
+      state: "completed",
+    },
+    _sum: { focusMinutes: true },
+  });
+  const totalMinutes = totalMinutesResult._sum.focusMinutes ?? 0;
+
+  // treesCompleted — count of daily_trees with stage = 4
+  const treesCompleted = await prisma.dailyTree.count({
+    where: {
+      userId: { in: memberUserIds },
+      stage: 4,
+    },
+  });
+
+  // sessions — count of all completed sessions
+  const sessions = await prisma.session.count({
+    where: {
+      userId: { in: memberUserIds },
+      state: "completed",
+    },
+  });
+
+  // todayTreeCount — count of members with stage >= 1 for today
+  const now = new Date();
+  let todayTreeCount = 0;
+
+  for (const member of group.members) {
+    const offsetMinutes = member.user.utcOffset;
+    const localDate = new Date(now.getTime() + offsetMinutes * 60 * 1000);
+    const todayDateStr = localDate.toISOString().split("T")[0];
+    const todayDate = new Date(todayDateStr + "T00:00:00.000Z");
+
+    const todayTree = await prisma.dailyTree.findUnique({
+      where: {
+        userId_date: {
+          userId: member.userId,
+          date: todayDate,
+        },
+      },
+      select: { stage: true },
+    });
+
+    if (todayTree && todayTree.stage >= 1) {
+      todayTreeCount++;
+    }
+  }
+
+  return {
+    ok: true,
+    stats: {
+      totalMinutes,
+      treesCompleted,
+      sessions,
+      todayTreeCount,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// getMemberStatus
+// Returns real-time member status for the Members table.
+// Guard: user must be a member.
+// ---------------------------------------------------------------------------
+export type MemberStatus = {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  status: "focus_session" | "afk";
+  personalStreak: number;
+  contribution: number;
+};
+
+export type GetMemberStatusError =
+  | { code: "GROUP_NOT_FOUND" }
+  | { code: "NOT_GROUP_MEMBER" };
+
+export type GetMemberStatusResult =
+  | { ok: true; members: MemberStatus[] }
+  | { ok: false; error: GetMemberStatusError };
+
+export async function getMemberStatus(
+  groupId: string,
+  requestingUserId: string
+): Promise<GetMemberStatusResult> {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+              streak: { select: { currentStreak: true } },
+            },
+          },
+        },
+        orderBy: { joinedAt: "asc" },
+      },
+    },
+  });
+
+  if (!group) {
+    return { ok: false, error: { code: "GROUP_NOT_FOUND" } };
+  }
+
+  // Auth guard: requester must be a member
+  const isMember = group.members.some((m) => m.userId === requestingUserId);
+  if (!isMember) {
+    return { ok: false, error: { code: "NOT_GROUP_MEMBER" } };
+  }
+
+  const members: MemberStatus[] = [];
+
+  for (const member of group.members) {
+    const userId = member.user.id;
+
+    // Check if user has an active session
+    const activeSession = await prisma.session.findFirst({
+      where: {
+        userId,
+        state: "active",
+      },
+    });
+
+    const status: "focus_session" | "afk" = activeSession ? "focus_session" : "afk";
+
+    // Get contribution (total focus minutes for completed sessions)
+    const contributionResult = await prisma.session.aggregate({
+      where: {
+        userId,
+        state: "completed",
+      },
+      _sum: { focusMinutes: true },
+    });
+    const contribution = contributionResult._sum.focusMinutes ?? 0;
+
+    members.push({
+      userId,
+      name: member.user.name,
+      avatarUrl: member.user.avatarUrl,
+      status,
+      personalStreak: member.user.streak?.currentStreak ?? 0,
+      contribution,
+    });
+  }
+
+  return { ok: true, members };
+}
+
+// ---------------------------------------------------------------------------
+// deleteGroup
+// Admin-only: deletes the entire group and all members.
+// ---------------------------------------------------------------------------
+export type DeleteGroupError =
+  | { code: "GROUP_NOT_FOUND" }
+  | { code: "NOT_GROUP_ADMIN" };
+
+export type DeleteGroupResult =
+  | { ok: true }
+  | { ok: false; error: DeleteGroupError };
+
+export async function deleteGroup(
+  groupId: string,
+  requestingUserId: string
+): Promise<DeleteGroupResult> {
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+
+  if (!group) {
+    return { ok: false, error: { code: "GROUP_NOT_FOUND" } };
+  }
+
+  // Only admin can delete
+  if (group.adminUserId !== requestingUserId) {
+    return { ok: false, error: { code: "NOT_GROUP_ADMIN" } };
+  }
+
+  // Delete group_members first (foreign key constraint), then group
+  await prisma.$transaction([
+    prisma.groupMember.deleteMany({ where: { groupId } }),
+    prisma.group.delete({ where: { id: groupId } }),
+  ]);
+
+  return { ok: true };
+}

@@ -24,6 +24,8 @@ export type ErrorCode =
   | "SESSION_NOT_ACTIVE"
   | "SESSION_TOO_SHORT"
   | "INVALID_SESSION"
+  | "NOT_GROUP_MEMBER"
+  | "NOT_GROUP_ADMIN"
   | "INTERNAL_ERROR";
 
 export function apiError(

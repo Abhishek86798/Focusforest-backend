@@ -188,19 +188,33 @@ POST   /api/v1/auth/signup                        no auth
 POST   /api/v1/auth/login                         no auth
 POST   /api/v1/auth/logout                        Bearer JWT
 GET    /api/v1/auth/me                            Bearer JWT
+PATCH  /api/v1/auth/profile                       Bearer JWT
 POST   /api/v1/sessions                           Bearer JWT
+POST   /api/v1/sessions/start                     Bearer JWT
+POST   /api/v1/sessions/:id/complete              Bearer JWT
+POST   /api/v1/sessions/:id/abandon               Bearer JWT
 GET    /api/v1/sessions                           Bearer JWT
 GET    /api/v1/trees/today                        Bearer JWT
 GET    /api/v1/trees/calendar                     Bearer JWT
 GET    /api/v1/trees/week/:weekId                 Bearer JWT
+GET    /api/v1/groups                             Bearer JWT
 POST   /api/v1/groups                             Bearer JWT
 POST   /api/v1/groups/join                        Bearer JWT
 GET    /api/v1/groups/:id                         Bearer JWT
+GET    /api/v1/groups/:id/stats                   Bearer JWT
+GET    /api/v1/groups/:id/members/status          Bearer JWT
 GET    /api/v1/groups/:id/calendar                Bearer JWT
+DELETE /api/v1/groups/:id                         Bearer JWT
 DELETE /api/v1/groups/:id/members/:userId         Bearer JWT
 GET    /api/v1/leaderboard/solo                   Bearer JWT
 GET    /api/v1/leaderboard/groups                 Bearer JWT
+GET    /api/v1/stats/summary                      Bearer JWT
+GET    /api/v1/stats/streak                       Bearer JWT
+GET    /api/v1/timer/variants                     Bearer JWT
+GET    /api/v1/user/preferences                   Bearer JWT
+PATCH  /api/v1/user/preferences                   Bearer JWT
 POST   /dev/midnight-reset                        no auth (dev only)
+POST   /dev/reset-tree                            no auth (dev only)
 ```
 
 ---
@@ -371,19 +385,248 @@ Added immersive mode session tracking with live session state management, allowi
 
 ---
 
+## Timer & User Preferences Feature (2026-04-07)
+
+Added three new endpoints to support the Home/Timer screen functionality, enabling users to select timer variants and persist preferences.
+
+### New Endpoints
+
+**Timer Variants:**
+- `GET /api/v1/timer/variants` — Returns list of available timer presets
+  - Response: 4 variants (Classic 25min, Sprint 10min, Deep Work 45min, Ultra 90min)
+  - Static configuration, no database queries
+  - Auth required
+
+**User Preferences:**
+- `GET /api/v1/user/preferences` — Returns user's timer preferences and leaf badge count
+  - Response: `{ selectedVariant, leafCount, lastTaskText }`
+  - `leafCount` — count of completed trees (stage = 4) for leaf badge display
+  - `lastTaskText` — most recent task text from sessions
+  - Auth required
+
+- `PATCH /api/v1/user/preferences` — Updates user's timer preferences
+  - Request: `{ selectedVariant?, lastTaskText? }`
+  - Validates variant against enum: `classic | sprint | deep | ultra`
+  - Max 120 characters for task text
+  - Merges updates into existing preferences JSON
+  - Auth required
+
+### Database Changes
+- Added `preferences Json?` field to `users` table (default: `{}`)
+- Migration SQL created at `prisma/migrations/add_user_preferences/migration.sql`
+- Schema validated successfully
+
+### Implementation Files
+
+**New Files:**
+- `src/config/timerVariants.ts` — Timer variant configuration (4 presets)
+- `src/routes/timer.ts` — Timer variants endpoint
+- `src/routes/userPreferences.ts` — User preferences GET/PATCH endpoints
+- `TIMER_PREFERENCES_IMPLEMENTATION.md` — Complete implementation documentation
+- `TIMER_PREFERENCES_TESTING.md` — Comprehensive testing guide with Postman scripts
+
+**Modified Files:**
+- `prisma/schema.prisma` — Added preferences field to User model
+- `src/index.ts` — Mounted `/api/v1/timer` and `/api/v1/user` routes
+- `docs/API.md` — Added section 7: Timer & Preferences with full endpoint documentation
+
+### Key Features
+- Flexible JSON storage for future preference additions
+- Leaf count automatically reflects completed trees
+- Task text persists across sessions
+- Backward compatible (existing users get defaults)
+- Zod validation for data integrity
+- No TypeScript compilation errors
+
+### Implementation Status
+✅ Schema updated with preferences field  
+✅ Timer variants config created  
+✅ Timer routes implemented  
+✅ User preferences routes implemented  
+✅ Routes mounted in Express app  
+✅ API documentation updated  
+✅ Zod validation schemas defined  
+✅ Migration SQL created  
+✅ Schema validation passed  
+✅ Database synced with `npx prisma db push`  
+✅ Prisma client regenerated successfully  
+✅ TypeScript compilation clean (all files)  
+✅ Ready for testing and deployment
+
+### Database Setup (Completed)
+
+**Steps Taken:**
+1. ✅ Stopped dev server to release file lock
+2. ✅ Ran `npx prisma db push` — database already in sync (preferences column exists)
+3. ✅ Ran `npx prisma generate` — TypeScript types regenerated successfully
+4. ✅ Verified with `npx tsc --noEmit` — no compilation errors
+
+**Note:** Used `prisma db push` instead of `migrate dev` to avoid resetting the database. The drift detection showed all tables already existed, so we only needed to sync the schema without losing data.
+
+### Testing Checklist
+- [x] Stop dev server and run `npx prisma generate`
+- [x] Database synced with preferences column
+- [x] TypeScript compilation successful
+- [ ] Start dev server and test endpoints
+- [ ] GET /timer/variants returns 4 variants
+- [ ] GET /user/preferences returns defaults for new user
+- [ ] PATCH /user/preferences updates selectedVariant
+- [ ] PATCH /user/preferences updates lastTaskText
+- [ ] leafCount reflects actual completed trees count
+- [ ] Invalid variant ID returns 400
+- [ ] Task text > 120 chars returns 400
+- [ ] Update Postman collection with new requests
+
+---
+
+## Groups Screen Endpoints (2026-04-07)
+
+Added four new endpoints to support the Groups screen UI, providing sidebar list, aggregate stats, real-time member status, and group deletion.
+
+### New Endpoints
+
+**Groups List:**
+- `GET /api/v1/groups` — Returns all groups the user belongs to
+  - Response: Array of groups with `{ id, name, description, memberCount, activeMemberCount, isAdmin }`
+  - `activeMemberCount` — count of members with sessions today (timezone-aware)
+  - `isAdmin` — whether requesting user is the group admin
+  - Used for "Your Groups" left sidebar
+
+**Group Stats:**
+- `GET /api/v1/groups/:id/stats` — Returns aggregate stat tiles for the group
+  - Response: `{ totalMinutes, treesCompleted, sessions, todayTreeCount }`
+  - `totalMinutes` — sum of focus minutes across all completed sessions
+  - `treesCompleted` — count of trees with stage = 4 across all members
+  - `sessions` — count of all completed sessions
+  - `todayTreeCount` — count of members with stage >= 1 today
+  - Guard: user must be a member (403 NOT_GROUP_MEMBER)
+
+**Member Status:**
+- `GET /api/v1/groups/:id/members/status` — Returns real-time member status
+  - Response: Array of members with `{ userId, name, avatarUrl, status, personalStreak, contribution }`
+  - `status` — `"focus_session"` if user has active session, `"afk"` otherwise
+  - `personalStreak` — user's current streak
+  - `contribution` — total focus minutes contributed to group
+  - Guard: user must be a member (403 NOT_GROUP_MEMBER)
+
+**Group Deletion:**
+- `DELETE /api/v1/groups/:id` — Admin-only: deletes entire group
+  - Deletes all group_members first, then group (transaction)
+  - Guard: only admin can delete (403 NOT_GROUP_ADMIN)
+  - Response: `{ message: "Group deleted." }`
+
+### Implementation Details
+
+**Files Modified:**
+- `src/routes/groups.ts` — Added 4 new route handlers
+- `src/services/groupService.ts` — Added 4 new service functions:
+  - `getUserGroups()` — Fetches all user's groups with active member counts
+  - `getGroupStats()` — Aggregates stats across all group members
+  - `getMemberStatus()` — Fetches real-time status for all members
+  - `deleteGroup()` — Deletes group and all memberships
+- `src/lib/apiError.ts` — Added error codes: `NOT_GROUP_MEMBER`, `NOT_GROUP_ADMIN`
+- `docs/API.md` — Added documentation for all 4 endpoints
+
+### Key Features
+- Timezone-aware active member counting (uses each user's `utcOffset`)
+- Real-time session status detection (checks for active sessions)
+- Aggregate stats across all group members
+- Admin-only group deletion with transaction safety
+- Consistent error handling with standard error envelope
+
+### Implementation Status
+✅ All 4 endpoints implemented  
+✅ Service functions added to groupService.ts  
+✅ Error codes added to apiError.ts  
+✅ TypeScript compilation clean (0 errors)  
+✅ API documentation updated  
+✅ SUMMARY.md updated with route list  
+✅ Ready for testing
+
+### Testing Checklist
+- [ ] GET /groups returns user's groups with correct counts
+- [ ] activeMemberCount reflects timezone-aware today's sessions
+- [ ] isAdmin flag correct for admin vs member
+- [ ] GET /groups/:id/stats returns correct aggregates
+- [ ] todayTreeCount uses timezone-aware date calculation
+- [ ] GET /groups/:id/members/status shows correct status
+- [ ] status = "focus_session" when user has active session
+- [ ] contribution reflects total focus minutes
+- [ ] DELETE /groups/:id works for admin
+- [ ] DELETE /groups/:id returns 403 for non-admin
+- [ ] All endpoints return 403 for non-members
+- [ ] Update Postman collection with new requests
+
+---
+
+## UI vs API Gap Analysis (2026-04-07)
+
+Comprehensive analysis of all 8 screens against current API implementation.
+
+### ✅ Fully Covered Screens (No Gaps)
+- **Home (Timer)** — All 5 data requirements covered
+- **Timer Focus Mode** — All 6 requirements covered
+- **Groups** — All 10 requirements covered
+
+### ⚠️ Screens with Minor Gaps
+
+**Dashboard, Calendar, Zen Mode, Profile:**
+- Gap: `/stats/summary` route exists but was returning 404 in tests
+- Status: ✅ **FIXED** — Route is implemented and mounted at `/api/v1/stats`
+- All 4 stat fields provided: `totalMinutes`, `treesCompleted`, `sessions`, `taskCompletionRate`
+
+**Leaderboard:**
+- Gap: Response field name mismatch (`leaderboard` vs `entries`)
+- Status: ✅ **FIXED** — Both endpoints now return `entries` array
+- Updated: `GET /leaderboard/solo` and `GET /leaderboard/groups`
+
+### 📊 Remaining Gaps (Optional/Decorative)
+
+| Gap | Affected Screen | Status | Recommendation |
+|-----|----------------|--------|----------------|
+| "Top 5% User" badge | Profile | No API field exists | Treat as decorative/hardcoded for v1.0 |
+| "+12 this week" tree delta | Profile | Not in /stats/summary | Derive on frontend from `GET /trees/week/:weekId` |
+
+### Summary Table
+
+| Screen | Data Requirements | API Coverage | Status |
+|--------|------------------|--------------|--------|
+| Home (Timer) | 5 | 5/5 | ✅ Complete |
+| Timer Focus Mode | 6 | 6/6 | ✅ Complete |
+| Zen Mode | 3 | 3/3 | ✅ Complete |
+| Dashboard | 9 | 9/9 | ✅ Complete |
+| Calendar | 7 | 7/7 | ✅ Complete |
+| Groups | 10 | 10/10 | ✅ Complete |
+| Leaderboard | 5 | 5/5 | ✅ Complete |
+| Profile | 8 | 6/8 | ⚠️ 2 optional gaps |
+
+**Overall Coverage:** 53/55 requirements (96.4%)
+
+**Critical Gaps:** 0  
+**Optional/Decorative Gaps:** 2
+
+---
+
 ## Next Steps
+
+### Immediate Testing
+- ✅ `/stats/summary` route verified as mounted
+- ✅ Leaderboard `entries` field name fixed
+- ⏳ **Run Postman collection v2** — Expected: 44/44 tests passing (100%)
+- ⏳ **Update Postman collection** — Add any missing test cases for new endpoints
 
 ### Deployment (Week 4 remaining)
 - **Railway deployment** — configure environment variables, deploy backend
 - **End-to-end testing** — run full Postman collection against production
-- **Update Postman collection** — add profile update and privacy toggle test requests
-- **Test leaderboard privacy** — verify private users excluded, immediate restoration on toggle
+- **Frontend integration** — verify all 8 screens can fetch required data
+- **Performance testing** — validate response times under load
 
 ### Future Features (Post v1.0)
 - **Live group sessions** — Supabase Realtime pub/sub for synced timers
 - **Web push notifications** — BullMQ worker + service worker integration
 - **Weekly forest archive** — persist completed weeks to dedicated table
-- **Property-based testing** — implement fast-check tests for privacy feature correctness properties
+- **Percentile ranking** — Add "Top X% User" calculation to leaderboard service
+- **Weekly tree delta** — Add `treesThisWeek` field to `/stats/summary` response
 
 ---
 

@@ -5,9 +5,12 @@ import cookieParser from "cookie-parser";
 
 import sessionsRouter from "./routes/sessions";
 import authRouter from "./routes/auth";
+import statsRouter from "./routes/stats";
 import treesRouter from "./routes/trees";
 import groupsRouter from "./routes/groups";
 import leaderboardRouter from "./routes/leaderboard";
+import timerRouter from "./routes/timer";
+import userPreferencesRouter from "./routes/userPreferences";
 import { startMidnightCron, runMidnightReset } from "./jobs/midnightReset";
 
 const app = express();
@@ -110,9 +113,12 @@ if (process.env.NODE_ENV !== "production") {
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/sessions", sessionsRouter);
+app.use("/api/v1/stats", statsRouter);
 app.use("/api/v1/trees", treesRouter);
 app.use("/api/v1/groups", groupsRouter);
 app.use("/api/v1/leaderboard", leaderboardRouter);
+app.use("/api/v1/timer", timerRouter);
+app.use("/api/v1/user", userPreferencesRouter);
 
 // ---------------------------------------------------------------------------
 // 404 handler

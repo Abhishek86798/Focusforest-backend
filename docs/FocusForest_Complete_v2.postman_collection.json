@@ -1,0 +1,781 @@
+{
+  "info": {
+    "_postman_id": "focusforest-backend-complete-v2",
+    "name": "FocusForest Backend — Complete v2",
+    "description": "Complete API test collection for FocusForest backend with all new endpoints (Timer, User Preferences, Groups Screen, Stats). Run folders in order.\n\nBefore running: Start server with `npm run dev`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "jwt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "groupId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "inviteCode",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 — Health Check",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 — Auth",
+      "item": [
+        {
+          "name": "POST /auth/signup",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@focusforest.com\",\n  \"password\": \"Test1234!\",\n  \"name\": \"Test User\",\n  \"utcOffset\": 330\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "signup"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const status = pm.response.code;",
+                  "const body = pm.response.json();",
+                  "pm.test('Status is 201 or 409', () => pm.expect([201, 409]).to.include(status));",
+                  "if (status === 201) {",
+                  "  pm.collectionVariables.set('jwt', body.accessToken);",
+                  "  pm.collectionVariables.set('userId', body.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@focusforest.com\",\n  \"password\": \"Test1234!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('jwt', body.accessToken);",
+                  "pm.collectionVariables.set('userId', body.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has user fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.id).to.be.a('string');",
+                  "  pm.expect(body.email).to.be.a('string');",
+                  "  pm.expect(body.isPrivate).to.be.a('boolean');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /auth/profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{jwt}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User Updated\",\n  \"isPrivate\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "profile"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile updated', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.name).to.eql('Test User Updated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 — Sessions",
+      "item": [
+        {
+          "name": "POST /sessions — Classic completed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{jwt}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskText\": \"Test task\",\n  \"taskStatus\": \"completed\",\n  \"clientSessionId\": \"{{$guid}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sessions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has tree and streak', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.tree).to.be.an('object');",
+                  "  pm.expect(body.streak).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/start — Immersive mode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{jwt}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variant\": \"classic\",\n  \"focusMinutes\": 25,\n  \"taskText\": \"Immersive test\",\n  \"clientSessionId\": \"{{$guid}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sessions", "start"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Has sessionId and expectedEndAt', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.sessionId).to.be.a('string');",
+                  "  pm.expect(body.expectedEndAt).to.be.a('string');",
+                  "  pm.collectionVariables.set('activeSessionId', body.sessionId);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "sessions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has sessions array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.sessions).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 — Stats",
+      "item": [
+        {
+          "name": "GET /stats/summary",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "summary"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has all stat fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalMinutes).to.be.a('number');",
+                  "  pm.expect(body.treesCompleted).to.be.a('number');",
+                  "  pm.expect(body.sessions).to.be.a('number');",
+                  "  pm.expect(body.taskCompletionRate).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/streak",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/streak",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "streak"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has streak fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.currentStreak).to.be.a('number');",
+                  "  pm.expect(body.longestStreak).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 — Timer & Preferences",
+      "item": [
+        {
+          "name": "GET /timer/variants",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/timer/variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "timer", "variants"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has 4 variants', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.variants).to.be.an('array').with.lengthOf(4);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/preferences",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user", "preferences"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has preference fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.selectedVariant).to.be.a('string');",
+                  "  pm.expect(body.leafCount).to.be.a('number');",
+                  "  pm.expect(body.lastTaskText).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /user/preferences",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{jwt}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectedVariant\": \"deep\",\n  \"lastTaskText\": \"Test task text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/user/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "user", "preferences"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns ok', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.ok).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 — Groups",
+      "item": [
+        {
+          "name": "POST /groups — Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{jwt}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Study Group\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('groupId', body.id);",
+                  "pm.collectionVariables.set('inviteCode', body.inviteCode);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups — List user's groups",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has groups array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.groups).to.be.an('array');",
+                  "  if (body.groups.length > 0) {",
+                  "    pm.expect(body.groups[0].activeMemberCount).to.be.a('number');",
+                  "    pm.expect(body.groups[0].isAdmin).to.be.a('boolean');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/:id — Details",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups", "{{groupId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has group details', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.members).to.be.an('array');",
+                  "  pm.expect(body.forestStats).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/:id/stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups", "{{groupId}}", "stats"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has all stat fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalMinutes).to.be.a('number');",
+                  "  pm.expect(body.treesCompleted).to.be.a('number');",
+                  "  pm.expect(body.sessions).to.be.a('number');",
+                  "  pm.expect(body.todayTreeCount).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/:id/members/status",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}/members/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups", "{{groupId}}", "members", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has members array with status', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.members).to.be.an('array');",
+                  "  if (body.members.length > 0) {",
+                  "    pm.expect(body.members[0].status).to.be.oneOf(['focus_session', 'afk']);",
+                  "    pm.expect(body.members[0].contribution).to.be.a('number');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /groups/:id/calendar",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/{{groupId}}/calendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups", "{{groupId}}", "calendar"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has days array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.days).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /groups/join",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{jwt}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteCode\": \"{{inviteCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/groups/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "groups", "join"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const status = pm.response.code;",
+                  "pm.test('Status is 200 or 409 (already member)', () => {",
+                  "  pm.expect([200, 409]).to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 — Trees & Calendar",
+      "item": [
+        {
+          "name": "GET /trees/today",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/trees/today",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "trees", "today"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has tree fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.stage).to.be.a('number');",
+                  "  pm.expect(body.glowLevel).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /trees/calendar",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/trees/calendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "trees", "calendar"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has trees array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.trees).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8 — Leaderboard",
+      "item": [
+        {
+          "name": "GET /leaderboard/solo",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leaderboard/solo?scope=global&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leaderboard", "solo"],
+              "query": [
+                {"key": "scope", "value": "global"},
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "20"}
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has entries array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.entries).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /leaderboard/groups",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{jwt}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leaderboard/groups?scope=global&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leaderboard", "groups"],
+              "query": [
+                {"key": "scope", "value": "global"},
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "20"}
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has entries array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.entries).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

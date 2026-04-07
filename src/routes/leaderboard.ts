@@ -32,7 +32,7 @@ router.get(
 
     const { scope, page, limit } = query.data;
     const entries = await getSoloLeaderboard(page, limit, scope);
-    res.json({ leaderboard: entries, page, limit });
+    res.json({ entries, page, limit });
   }
 );
 
@@ -53,7 +53,7 @@ router.get(
 
     const { page, limit } = query.data;
     const entries = await getGroupsLeaderboard(page, limit);
-    res.json({ leaderboard: entries, page, limit });
+    res.json({ entries, page, limit });
   }
 );
 

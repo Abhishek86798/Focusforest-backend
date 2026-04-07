@@ -8,6 +8,14 @@ const apiError_1 = require("../lib/apiError");
 const groupService_1 = require("../services/groupService");
 const router = (0, express_1.Router)();
 // ---------------------------------------------------------------------------
+// GET /api/v1/groups
+// Returns all groups the authenticated user belongs to (for sidebar list).
+// ---------------------------------------------------------------------------
+router.get("/", auth_1.requireAuth, async (req, res) => {
+    const groups = await (0, groupService_1.getUserGroups)(req.userId);
+    res.status(200).json({ groups });
+});
+// ---------------------------------------------------------------------------
 // POST /api/v1/groups
 // Create a new group. Authenticated user becomes admin and first member.
 // ---------------------------------------------------------------------------
@@ -54,6 +62,44 @@ router.post("/join", auth_1.requireAuth, (0, validate_1.validate)(joinGroupSchem
         name: result.group.name,
         memberCount: result.group.memberCount,
     });
+});
+// ---------------------------------------------------------------------------
+// GET /api/v1/groups/:id/stats
+// Returns aggregate stat tiles for the selected group.
+// ---------------------------------------------------------------------------
+router.get("/:id/stats", auth_1.requireAuth, async (req, res) => {
+    const groupId = req.params.id;
+    const result = await (0, groupService_1.getGroupStats)(groupId, req.userId);
+    if (!result.ok) {
+        switch (result.error.code) {
+            case "GROUP_NOT_FOUND":
+                res.status(404).json((0, apiError_1.apiError)("GROUP_NOT_FOUND", "Group not found."));
+                return;
+            case "NOT_GROUP_MEMBER":
+                res.status(403).json((0, apiError_1.apiError)("NOT_GROUP_MEMBER", "You are not a member of this group."));
+                return;
+        }
+    }
+    res.status(200).json(result.stats);
+});
+// ---------------------------------------------------------------------------
+// GET /api/v1/groups/:id/members/status
+// Returns real-time member status for the Members table.
+// ---------------------------------------------------------------------------
+router.get("/:id/members/status", auth_1.requireAuth, async (req, res) => {
+    const groupId = req.params.id;
+    const result = await (0, groupService_1.getMemberStatus)(groupId, req.userId);
+    if (!result.ok) {
+        switch (result.error.code) {
+            case "GROUP_NOT_FOUND":
+                res.status(404).json((0, apiError_1.apiError)("GROUP_NOT_FOUND", "Group not found."));
+                return;
+            case "NOT_GROUP_MEMBER":
+                res.status(403).json((0, apiError_1.apiError)("NOT_GROUP_MEMBER", "You are not a member of this group."));
+                return;
+        }
+    }
+    res.status(200).json({ members: result.members });
 });
 // ---------------------------------------------------------------------------
 // GET /api/v1/groups/:id
@@ -120,6 +166,25 @@ router.get("/:id/calendar", auth_1.requireAuth, async (req, res) => {
         }
     }
     res.status(200).json({ days: result.days });
+});
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/groups/:id
+// Admin-only: deletes the entire group and removes all members.
+// ---------------------------------------------------------------------------
+router.delete("/:id", auth_1.requireAuth, async (req, res) => {
+    const groupId = req.params.id;
+    const result = await (0, groupService_1.deleteGroup)(groupId, req.userId);
+    if (!result.ok) {
+        switch (result.error.code) {
+            case "GROUP_NOT_FOUND":
+                res.status(404).json((0, apiError_1.apiError)("GROUP_NOT_FOUND", "Group not found."));
+                return;
+            case "NOT_GROUP_ADMIN":
+                res.status(403).json((0, apiError_1.apiError)("NOT_GROUP_ADMIN", "Only the group admin can delete the group."));
+                return;
+        }
+    }
+    res.status(200).json({ message: "Group deleted." });
 });
 // ---------------------------------------------------------------------------
 // DELETE /api/v1/groups/:id/members/:userId

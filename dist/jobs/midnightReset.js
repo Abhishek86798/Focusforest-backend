@@ -156,6 +156,13 @@ async function runMidnightReset() {
         return;
     }
     console.log(`[midnightReset] Processing ${users.length} user(s).`);
+    // Auto-abandon stale sessions before processing users
+    try {
+        await autoAbandonStaleSessions();
+    }
+    catch (err) {
+        console.error(`[midnightReset] Failed to auto-abandon stale sessions:`, err);
+    }
     // Process each user sequentially to avoid thundering-herd on the DB.
     // For large user bases this should be batched/parallelised with a job queue.
     for (const user of users) {
@@ -177,6 +184,45 @@ async function runMidnightReset() {
         console.error(`[midnightReset] Failed to update groups leaderboard:`, err);
     }
     console.log(`[midnightReset] Done.`);
+}
+/**
+ * Auto-abandon sessions that are still active after expectedEndAt + 60 minutes.
+ * Called during midnight reset to clean up stale sessions.
+ */
+async function autoAbandonStaleSessions() {
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - 60 * 60 * 1000); // 60 minutes ago
+    // Find all active sessions where expectedEndAt + 60 minutes has passed
+    const staleSessions = await prisma_1.prisma.session.findMany({
+        where: {
+            state: "active",
+            expectedEndAt: {
+                lte: cutoffTime,
+            },
+        },
+        select: { id: true, userId: true, expectedEndAt: true },
+    });
+    if (staleSessions.length === 0) {
+        console.log(`[midnightReset] No stale sessions to auto-abandon.`);
+        return;
+    }
+    console.log(`[midnightReset] Auto-abandoning ${staleSessions.length} stale session(s).`);
+    // Update all stale sessions to abandoned
+    for (const session of staleSessions) {
+        try {
+            await prisma_1.prisma.session.update({
+                where: { id: session.id },
+                data: {
+                    state: "abandoned",
+                    abandonedAt: now,
+                },
+            });
+            console.log(`[midnightReset] Auto-abandoned session ${session.id} for user ${session.userId} (expected end: ${session.expectedEndAt?.toISOString()}).`);
+        }
+        catch (err) {
+            console.error(`[midnightReset] Failed to auto-abandon session ${session.id}:`, err);
+        }
+    }
 }
 async function processUserMidnight(userId, utcOffset, utcNow) {
     const yesterdayStr = getLocalYesterday(utcNow, utcOffset);

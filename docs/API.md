@@ -6,6 +6,29 @@
 
 ---
 
+## UI Coverage Status
+
+**Last Updated:** 2026-04-07
+
+All 8 screens are fully supported by the API with 96.4% coverage (53/55 requirements).
+
+| Screen | Requirements | Coverage | Status |
+|--------|-------------|----------|--------|
+| Home (Timer) | 5 | 5/5 | ✅ Complete |
+| Timer Focus Mode | 6 | 6/6 | ✅ Complete |
+| Zen Mode | 3 | 3/3 | ✅ Complete |
+| Dashboard | 9 | 9/9 | ✅ Complete |
+| Calendar | 7 | 7/7 | ✅ Complete |
+| Groups | 10 | 10/10 | ✅ Complete |
+| Leaderboard | 5 | 5/5 | ✅ Complete |
+| Profile | 8 | 6/8 | ⚠️ 2 optional gaps |
+
+**Optional Gaps (Frontend Workarounds Available):**
+- "Top 5% User" badge on Profile — No percentile ranking API (treat as decorative)
+- "+12 this week" tree delta on Profile — Derive from `GET /trees/week/:weekId`
+
+---
+
 ## Contents
 
 1. [Auth](#1-auth)
@@ -13,7 +36,9 @@
 3. [Trees & Calendar](#3-trees--calendar)
 4. [Groups](#4-groups)
 5. [Leaderboard](#5-leaderboard)
-6. [Common Types](#6-common-types)
+6. [Stats](#6-stats)
+7. [Timer & Preferences](#7-timer--preferences)
+8. [Common Types](#8-common-types)
 
 ---
 
@@ -387,6 +412,45 @@ Get all 7 day slots for a specific week.
 
 ## 4. Groups
 
+### `GET /groups`
+
+Get all groups the authenticated user belongs to (for sidebar list).
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Query params:** None
+
+**Response `200`:**
+```json
+{
+  "groups": [
+    {
+      "id": "uuid",
+      "name": "The Pine Nuts",
+      "description": null,
+      "memberCount": 4,
+      "activeMemberCount": 2,
+      "isAdmin": true
+    }
+  ]
+}
+```
+
+**Field descriptions:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Group UUID |
+| `name` | `string` | Group name |
+| `description` | `string \| null` | Group description (placeholder for future) |
+| `memberCount` | `number` | Total number of members in the group |
+| `activeMemberCount` | `number` | Count of members with sessions today (based on their timezone) |
+| `isAdmin` | `boolean` | Whether the requesting user is the group admin |
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+
+---
+
 ### `POST /groups`
 
 Create a new group. The authenticated user becomes the admin.
@@ -432,6 +496,80 @@ z.object({
 ```
 
 **Errors:** `404` code not found, `409` already a member, `403` group is full (5 members).
+
+---
+
+### `GET /groups/:id/stats`
+
+Get aggregate stat tiles for the selected group.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Params:** `id` — Group UUID
+
+**Response `200`:**
+```json
+{
+  "totalMinutes": 1000,
+  "treesCompleted": 30,
+  "sessions": 60,
+  "todayTreeCount": 6
+}
+```
+
+**Field descriptions:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalMinutes` | `number` | Sum of `focus_minutes` across all completed sessions for all members |
+| `treesCompleted` | `number` | Count of `daily_trees` with `stage = 4` across all members |
+| `sessions` | `number` | Count of all completed sessions across all members |
+| `todayTreeCount` | `number` | Count of members who have grown at least 1 tree today (stage >= 1) |
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `403 NOT_GROUP_MEMBER` — Requesting user is not a member of this group
+- `404 GROUP_NOT_FOUND` — Group not found
+
+---
+
+### `GET /groups/:id/members/status`
+
+Get real-time member status for the Members table in the group panel.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Params:** `id` — Group UUID
+
+**Response `200`:**
+```json
+{
+  "members": [
+    {
+      "userId": "uuid",
+      "name": "Marcus Thorne",
+      "avatarUrl": null,
+      "status": "focus_session",
+      "personalStreak": 42,
+      "contribution": 842
+    }
+  ]
+}
+```
+
+**Field descriptions:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | `string` | User UUID |
+| `name` | `string` | User's display name |
+| `avatarUrl` | `string \| null` | User's avatar URL |
+| `status` | `"focus_session" \| "afk"` | `"focus_session"` if user has an active session, `"afk"` otherwise |
+| `personalStreak` | `number` | User's current streak |
+| `contribution` | `number` | Total focus minutes this user has contributed to the group |
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `403 NOT_GROUP_MEMBER` — Requesting user is not a member of this group
+- `404 GROUP_NOT_FOUND` — Group not found
 
 ---
 
@@ -495,6 +633,28 @@ Get the group's collective daily output — accountability view.
 
 ---
 
+### `DELETE /groups/:id`
+
+Admin-only: Delete the entire group and remove all members.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Params:** `id` — Group UUID
+
+**Response `200`:**
+```json
+{
+  "message": "Group deleted."
+}
+```
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `403 NOT_GROUP_ADMIN` — Only the group admin can delete the group
+- `404 GROUP_NOT_FOUND` — Group not found
+
+---
+
 ### `DELETE /groups/:id/members/:userId`
 
 Remove a member (admin only) or leave the group (self).
@@ -524,9 +684,6 @@ Solo rankings by total all-time completed trees.
 **Response `200`:**
 ```json
 {
-  "scope": "global",
-  "page": 1,
-  "total": 500,
   "entries": [
     {
       "rank": 1,
@@ -536,7 +693,9 @@ Solo rankings by total all-time completed trees.
       "totalTrees": 120,
       "currentStreak": 30
     }
-  ]
+  ],
+  "page": 1,
+  "limit": 20
 }
 ```
 
@@ -555,9 +714,6 @@ Group rankings by total group forest size.
 **Response `200`:**
 ```json
 {
-  "scope": "global",
-  "page": 1,
-  "total": 100,
   "entries": [
     {
       "rank": 1,
@@ -566,13 +722,217 @@ Group rankings by total group forest size.
       "totalTrees": 320,
       "memberCount": 5
     }
-  ]
+  ],
+  "page": 1,
+  "limit": 20
 }
 ```
 
 ---
 
-## 6. Common Types
+## 6. Stats
+
+### `GET /stats/summary`
+
+Get aggregate statistics for the authenticated user's focus sessions and trees.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Query params:** None
+
+**Response `200`:**
+```json
+{
+  "totalMinutes": 450,
+  "treesCompleted": 12,
+  "sessions": 18,
+  "taskCompletionRate": 0.67
+}
+```
+
+**Field descriptions:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalMinutes` | `number` | Sum of `focusMinutes` from all completed sessions |
+| `treesCompleted` | `number` | Count of daily trees where `stage = 4` |
+| `sessions` | `number` | Total count of completed sessions |
+| `taskCompletionRate` | `number` | Ratio of sessions with `taskStatus = 'completed'` to total sessions (0.0–1.0) |
+
+**Edge cases:**
+- New user with no sessions: all values return `0`
+- User with only abandoned sessions: all values return `0` (only completed sessions count)
+- User with sessions but no completed tasks: `taskCompletionRate` returns `0.0`
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `500 INTERNAL_ERROR` — Database error
+
+**Example request:**
+```bash
+curl -X GET https://api.focusforest.app/api/v1/stats/summary \
+  -H "Cookie: sb-access-token=<token>"
+```
+
+---
+
+### `GET /stats/streak`
+
+Get streak information for the authenticated user.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Query params:** None
+
+**Response `200` (with streak record):**
+```json
+{
+  "currentStreak": 7,
+  "longestStreak": 14,
+  "lastActiveDate": "2025-03-25"
+}
+```
+
+**Response `200` (no streak record):**
+```json
+{
+  "currentStreak": 0,
+  "longestStreak": 0,
+  "lastActiveDate": null
+}
+```
+
+**Field descriptions:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `currentStreak` | `number` | Current consecutive days with at least one session |
+| `longestStreak` | `number` | All-time longest streak for this user |
+| `lastActiveDate` | `string \| null` | Last date user completed a session (format: `YYYY-MM-DD`) |
+
+**Edge cases:**
+- New user with no streak record: returns zeros and `null` for `lastActiveDate`
+- User who missed a day: `currentStreak` resets to `0`, `longestStreak` preserved
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `500 INTERNAL_ERROR` — Database error
+
+**Example request:**
+```bash
+curl -X GET https://api.focusforest.app/api/v1/stats/streak \
+  -H "Cookie: sb-access-token=<token>"
+```
+
+---
+
+## 7. Timer & Preferences
+
+### `GET /timer/variants`
+
+Get the list of available timer variants for the timer screen.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Query params:** None
+
+**Response `200`:**
+```json
+{
+  "variants": [
+    { "id": "classic", "label": "Classic", "focusMinutes": 25 },
+    { "id": "sprint", "label": "Sprint", "focusMinutes": 10 },
+    { "id": "deep", "label": "Deep Work", "focusMinutes": 45 },
+    { "id": "ultra", "label": "Ultra", "focusMinutes": 90 }
+  ]
+}
+```
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+
+---
+
+### `GET /user/preferences`
+
+Get the user's saved timer preferences including leaf badge count.
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Query params:** None
+
+**Response `200`:**
+```json
+{
+  "selectedVariant": "classic",
+  "leafCount": 12,
+  "lastTaskText": "Q4 Planning"
+}
+```
+
+**Field descriptions:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `selectedVariant` | `string` | Last selected timer variant (default: `"classic"`) |
+| `leafCount` | `number` | Count of completed trees (`stage = 4`) — displayed as leaf badge |
+| `lastTaskText` | `string` | Most recent task text from sessions (empty string if none) |
+
+**Edge cases:**
+- New user with no preferences: returns `selectedVariant: "classic"`, `leafCount: 0`, `lastTaskText: ""`
+- User with no completed trees: `leafCount: 0`
+- User with no task history: `lastTaskText: ""`
+
+**Error responses:**
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `404 USER_NOT_FOUND` — User profile not found
+
+---
+
+### `PATCH /user/preferences`
+
+Update the user's timer preferences (variant selection and last task text).
+
+**Authentication:** Required (Bearer token via `httpOnly` cookie)
+
+**Request body (Zod schema):**
+```ts
+z.object({
+  selectedVariant: z.enum(["classic", "sprint", "deep", "ultra"]).optional(),
+  lastTaskText: z.string().max(120).optional(),
+})
+```
+
+**Request example:**
+```json
+{
+  "selectedVariant": "deep",
+  "lastTaskText": "Finish Chapter 4"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "ok": true
+}
+```
+
+**Field descriptions:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `selectedVariant` | `string` | No | Timer variant ID (must be one of: `classic`, `sprint`, `deep`, `ultra`) |
+| `lastTaskText` | `string` | No | Task text to persist (max 120 characters) |
+
+**Edge cases:**
+- Partial updates: only provided fields are updated, others remain unchanged
+- Empty request body: no changes made, returns `{ ok: true }`
+
+**Error responses:**
+- `400 VALIDATION_ERROR` — Invalid variant ID or task text exceeds 120 characters
+- `401 UNAUTHORIZED` — Missing or invalid authentication token
+- `404 USER_NOT_FOUND` — User profile not found
+
+---
+
+## 8. Common Types
 
 ### TimerVariant
 ```ts

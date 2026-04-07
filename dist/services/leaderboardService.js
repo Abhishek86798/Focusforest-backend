@@ -18,8 +18,25 @@ const GROUPS_KEY = "leaderboard:groups";
 //
 // Called from midnightReset after streak update so the leaderboard reflects
 // the freshly-finalised tree.
+//
+// Privacy handling: If user has isPrivate=true, removes them from leaderboard.
+// If isPrivate=false, adds/updates their score.
 // ---------------------------------------------------------------------------
 async function updateSoloLeaderboard(userId) {
+    // Fetch user's privacy setting
+    const user = await prisma_1.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isPrivate: true },
+    });
+    if (!user) {
+        throw new Error(`User ${userId} not found`);
+    }
+    // If user is private, remove from leaderboard and return early
+    if (user.isPrivate) {
+        await redis_1.redis.zrem(SOLO_KEY, userId);
+        return;
+    }
+    // User is public — count completed trees and add/update their score
     const count = await prisma_1.prisma.dailyTree.count({
         where: { userId, stage: 4 },
     });
@@ -58,7 +75,11 @@ async function updateGroupsLeaderboard() {
         await Promise.all(zaddArgs.map((arg) => redis_1.redis.zadd(GROUPS_KEY, { score: arg.score, member: arg.member })));
     }
 }
-async function getSoloLeaderboard(page, limit) {
+async function getSoloLeaderboard(page, limit, scope) {
+    // Handle "none" scope
+    if (scope === "none") {
+        return [];
+    }
     const start = (page - 1) * limit;
     const end = start + limit - 1;
     // ZRANGE in reverse order (highest score first) with scores
@@ -73,10 +94,17 @@ async function getSoloLeaderboard(page, limit) {
     // The @upstash/redis client returns an array of { member, score } objects
     // when withScores is true.
     const entries = raw;
-    const userIds = entries.map((e) => e.member);
-    // Batch-fetch user profile + streak
+    // Filter out any invalid entries (undefined member or score)
+    const validEntries = entries.filter((e) => e && e.member !== undefined && e.member !== null && typeof e.score === 'number');
+    if (validEntries.length === 0)
+        return [];
+    const userIds = validEntries.map((e) => e.member);
+    // Batch-fetch user profile + streak, filtering out private users
     const users = await prisma_1.prisma.user.findMany({
-        where: { id: { in: userIds } },
+        where: {
+            id: { in: userIds },
+            isPrivate: false
+        },
         select: {
             id: true,
             name: true,
@@ -84,16 +112,20 @@ async function getSoloLeaderboard(page, limit) {
         },
     });
     const userMap = new Map(users.map((u) => [u.id, u]));
-    return entries.map((entry, idx) => {
+    // Only include users that passed the privacy filter and recalculate ranks
+    const filtered = validEntries
+        .filter(entry => userMap.has(entry.member))
+        .map((entry, idx) => {
         const user = userMap.get(entry.member);
         return {
             rank: start + idx + 1,
             userId: entry.member,
-            name: user?.name ?? "Unknown",
+            name: user.name,
             totalTrees: entry.score,
-            currentStreak: user?.streak?.currentStreak ?? 0,
+            currentStreak: user.streak?.currentStreak ?? 0,
         };
     });
+    return filtered;
 }
 async function getGroupsLeaderboard(page, limit) {
     const start = (page - 1) * limit;
@@ -105,7 +137,11 @@ async function getGroupsLeaderboard(page, limit) {
     if (!raw || raw.length === 0)
         return [];
     const entries = raw;
-    const groupIds = entries.map((e) => e.member);
+    // Filter out any invalid entries (undefined member or score)
+    const validEntries = entries.filter((e) => e && e.member !== undefined && e.member !== null && typeof e.score === 'number');
+    if (validEntries.length === 0)
+        return [];
+    const groupIds = validEntries.map((e) => e.member);
     const groups = await prisma_1.prisma.group.findMany({
         where: { id: { in: groupIds } },
         select: {
@@ -115,7 +151,7 @@ async function getGroupsLeaderboard(page, limit) {
         },
     });
     const groupMap = new Map(groups.map((g) => [g.id, g]));
-    return entries.map((entry, idx) => {
+    return validEntries.map((entry, idx) => {
         const group = groupMap.get(entry.member);
         return {
             rank: start + idx + 1,

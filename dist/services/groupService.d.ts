@@ -90,4 +90,65 @@ export type RemoveMemberResult = {
     error: RemoveMemberError;
 };
 export declare function removeMember(groupId: string, targetUserId: string, requestingUserId: string): Promise<RemoveMemberResult>;
+export type UserGroupSummary = {
+    id: string;
+    name: string;
+    description: string | null;
+    memberCount: number;
+    activeMemberCount: number;
+    isAdmin: boolean;
+};
+export declare function getUserGroups(userId: string): Promise<UserGroupSummary[]>;
+export type GroupStats = {
+    totalMinutes: number;
+    treesCompleted: number;
+    sessions: number;
+    todayTreeCount: number;
+};
+export type GetGroupStatsError = {
+    code: "GROUP_NOT_FOUND";
+} | {
+    code: "NOT_GROUP_MEMBER";
+};
+export type GetGroupStatsResult = {
+    ok: true;
+    stats: GroupStats;
+} | {
+    ok: false;
+    error: GetGroupStatsError;
+};
+export declare function getGroupStats(groupId: string, requestingUserId: string): Promise<GetGroupStatsResult>;
+export type MemberStatus = {
+    userId: string;
+    name: string;
+    avatarUrl: string | null;
+    status: "focus_session" | "afk";
+    personalStreak: number;
+    contribution: number;
+};
+export type GetMemberStatusError = {
+    code: "GROUP_NOT_FOUND";
+} | {
+    code: "NOT_GROUP_MEMBER";
+};
+export type GetMemberStatusResult = {
+    ok: true;
+    members: MemberStatus[];
+} | {
+    ok: false;
+    error: GetMemberStatusError;
+};
+export declare function getMemberStatus(groupId: string, requestingUserId: string): Promise<GetMemberStatusResult>;
+export type DeleteGroupError = {
+    code: "GROUP_NOT_FOUND";
+} | {
+    code: "NOT_GROUP_ADMIN";
+};
+export type DeleteGroupResult = {
+    ok: true;
+} | {
+    ok: false;
+    error: DeleteGroupError;
+};
+export declare function deleteGroup(groupId: string, requestingUserId: string): Promise<DeleteGroupResult>;
 //# sourceMappingURL=groupService.d.ts.map

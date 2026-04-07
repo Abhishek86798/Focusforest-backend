@@ -15,6 +15,7 @@ model User {
   avatarUrl         String?            @map("avatar_url")
   utcOffset         Int                @default(0) @map("utc_offset")
   isPrivate         Boolean            @default(false) @map("is_private")
+  preferences       Json?              @default("{}")
   createdAt         DateTime           @default(now()) @map("created_at")
   dailyTrees        DailyTree[]
   groupMemberships  GroupMember[]

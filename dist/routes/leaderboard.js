@@ -7,10 +7,10 @@ const apiError_1 = require("../lib/apiError");
 const leaderboardService_1 = require("../services/leaderboardService");
 const router = (0, express_1.Router)();
 // ---------------------------------------------------------------------------
-// Shared query schema — ?scope=global|friends&page=1&limit=20
+// Shared query schema — ?scope=global|none&page=1&limit=20
 // ---------------------------------------------------------------------------
 const leaderboardQuerySchema = zod_1.z.object({
-    scope: zod_1.z.enum(["global", "friends"]).default("global"),
+    scope: zod_1.z.enum(["global", "none"]).default("global"),
     page: zod_1.z.coerce.number().int().positive().default(1),
     limit: zod_1.z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -25,10 +25,9 @@ router.get("/solo", auth_1.requireAuth, async (req, res) => {
         res.status(400).json((0, apiError_1.apiError)("VALIDATION_ERROR", "Invalid query parameters."));
         return;
     }
-    const { page, limit } = query.data;
-    // friends scope is a v2 feature; for now fall back to global silently
-    const entries = await (0, leaderboardService_1.getSoloLeaderboard)(page, limit);
-    res.json({ leaderboard: entries, page, limit });
+    const { scope, page, limit } = query.data;
+    const entries = await (0, leaderboardService_1.getSoloLeaderboard)(page, limit, scope);
+    res.json({ entries, page, limit });
 });
 // ---------------------------------------------------------------------------
 // GET /api/v1/leaderboard/groups
@@ -43,7 +42,7 @@ router.get("/groups", auth_1.requireAuth, async (req, res) => {
     }
     const { page, limit } = query.data;
     const entries = await (0, leaderboardService_1.getGroupsLeaderboard)(page, limit);
-    res.json({ leaderboard: entries, page, limit });
+    res.json({ entries, page, limit });
 });
 exports.default = router;
 //# sourceMappingURL=leaderboard.js.map

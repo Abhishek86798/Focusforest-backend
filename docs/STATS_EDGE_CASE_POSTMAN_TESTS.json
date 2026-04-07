@@ -1,0 +1,441 @@
+{
+  "info": {
+    "_postman_id": "stats-edge-case-tests",
+    "name": "Stats Endpoints - Edge Case Tests",
+    "description": "Edge case tests for Task 4.3: User Stats Endpoints\n\nBefore running:\n1. Set up test data using STATS_EDGE_CASE_TEST_SETUP.sql\n2. Update collection variables with test user IDs\n3. Ensure server is running (npm run dev)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "userA_email",
+      "value": "usera@test.com",
+      "type": "string",
+      "description": "User with only abandoned sessions"
+    },
+    {
+      "key": "userB_email",
+      "value": "userb@test.com",
+      "type": "string",
+      "description": "User with sessions but no completed tasks"
+    },
+    {
+      "key": "userC_email",
+      "value": "userc@test.com",
+      "type": "string",
+      "description": "New user with no data"
+    },
+    {
+      "key": "test_password",
+      "value": "Test1234!",
+      "type": "string"
+    },
+    {
+      "key": "jwt",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Test 4.3.1 - User with Only Abandoned Sessions",
+      "item": [
+        {
+          "name": "Login as User A",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userA_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Login successful\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) {",
+                  "  pm.collectionVariables.set('jwt', body.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/summary - Should return all zeros",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "summary"]
+            },
+            "description": "User A has only abandoned sessions. All stats should be zero because only completed sessions count."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"totalMinutes is 0 (abandoned sessions don't count)\", function () {",
+                  "  pm.expect(body.totalMinutes).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"treesCompleted is 0\", function () {",
+                  "  pm.expect(body.treesCompleted).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"sessions is 0 (abandoned sessions don't count)\", function () {",
+                  "  pm.expect(body.sessions).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"taskCompletionRate is 0 (not NaN or undefined)\", function () {",
+                  "  pm.expect(body.taskCompletionRate).to.eql(0);",
+                  "});",
+                  "",
+                  "console.log('✅ Test 4.3.1 PASSED: Abandoned sessions correctly excluded from stats');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Test 4.3.2 - User with Sessions but No Completed Tasks",
+      "item": [
+        {
+          "name": "Login as User B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userB_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Login successful\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) {",
+                  "  pm.collectionVariables.set('jwt', body.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/summary - taskCompletionRate should be 0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "summary"]
+            },
+            "description": "User B has completed sessions but no completed tasks. taskCompletionRate should be 0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"totalMinutes is 80 (sum of completed sessions)\", function () {",
+                  "  pm.expect(body.totalMinutes).to.eql(80);",
+                  "});",
+                  "",
+                  "pm.test(\"sessions is 4 (only completed sessions count)\", function () {",
+                  "  pm.expect(body.sessions).to.eql(4);",
+                  "});",
+                  "",
+                  "pm.test(\"taskCompletionRate is 0 (no completed tasks)\", function () {",
+                  "  pm.expect(body.taskCompletionRate).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"taskCompletionRate is not NaN or undefined\", function () {",
+                  "  pm.expect(body.taskCompletionRate).to.be.a('number');",
+                  "  pm.expect(isNaN(body.taskCompletionRate)).to.be.false;",
+                  "});",
+                  "",
+                  "console.log('✅ Test 4.3.2 PASSED: Division by zero handled correctly, taskCompletionRate = 0');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Test 4.3.3 - New User Account (All Stats Zero/Null)",
+      "item": [
+        {
+          "name": "Login as User C",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userC_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Login successful\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body.accessToken) {",
+                  "  pm.collectionVariables.set('jwt', body.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/summary - All zeros for new user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "summary"]
+            },
+            "description": "New user with no data. All stats should be zero."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"totalMinutes is 0\", function () {",
+                  "  pm.expect(body.totalMinutes).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"treesCompleted is 0\", function () {",
+                  "  pm.expect(body.treesCompleted).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"sessions is 0\", function () {",
+                  "  pm.expect(body.sessions).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"taskCompletionRate is 0\", function () {",
+                  "  pm.expect(body.taskCompletionRate).to.eql(0);",
+                  "});",
+                  "",
+                  "console.log('✅ Test 4.3.3a PASSED: New user returns all zeros for summary stats');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /stats/streak - Zeros and null for new user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/streak",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "streak"]
+            },
+            "description": "New user with no streak record. Should return zeros and null."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"currentStreak is 0\", function () {",
+                  "  pm.expect(body.currentStreak).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"longestStreak is 0\", function () {",
+                  "  pm.expect(body.longestStreak).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"lastActiveDate is null\", function () {",
+                  "  pm.expect(body.lastActiveDate).to.be.null;",
+                  "});",
+                  "",
+                  "console.log('✅ Test 4.3.3b PASSED: New user returns zeros and null for streak stats');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Test 4.3.4 - Date Formatting for lastActiveDate",
+      "item": [
+        {
+          "name": "GET /stats/streak - Verify YYYY-MM-DD format",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stats/streak",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stats", "streak"]
+            },
+            "description": "Verify lastActiveDate is formatted as YYYY-MM-DD with no time component. Use any user with a streak record."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 OK\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"Response has lastActiveDate field\", function () {",
+                  "  pm.expect(body).to.have.property('lastActiveDate');",
+                  "});",
+                  "",
+                  "if (body.lastActiveDate !== null) {",
+                  "  pm.test(\"lastActiveDate matches YYYY-MM-DD format\", function () {",
+                  "    const dateRegex = /^\\d{4}-\\d{2}-\\d{2}$/;",
+                  "    pm.expect(body.lastActiveDate).to.match(dateRegex);",
+                  "  });",
+                  "",
+                  "  pm.test(\"lastActiveDate does not include time component\", function () {",
+                  "    pm.expect(body.lastActiveDate).to.not.include('T');",
+                  "    pm.expect(body.lastActiveDate).to.not.include(':');",
+                  "  });",
+                  "",
+                  "  pm.test(\"lastActiveDate is a valid date\", function () {",
+                  "    const date = new Date(body.lastActiveDate);",
+                  "    pm.expect(date.toString()).to.not.eql('Invalid Date');",
+                  "  });",
+                  "",
+                  "  console.log('✅ Test 4.3.4 PASSED: lastActiveDate formatted as YYYY-MM-DD:', body.lastActiveDate);",
+                  "} else {",
+                  "  console.log('⚠️ Test 4.3.4 SKIPPED: lastActiveDate is null (no streak record)');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

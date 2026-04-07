@@ -1,0 +1,1199 @@
+{
+	"id": "44ae8a9c-344f-45bd-81b9-58e734fed570",
+	"name": "FocusForest Backend",
+	"timestamp": "2026-04-02T14:43:27.193Z",
+	"collection_id": "41545406-6a5eba78-2f52-4002-8d9e-e251e653d24d",
+	"folder_id": 0,
+	"environment_id": "0",
+	"totalPass": 89,
+	"delay": 0,
+	"persist": true,
+	"status": "finished",
+	"startedAt": "2026-04-02T14:42:30.897Z",
+	"totalFail": 3,
+	"results": [
+		{
+			"id": "07592bbf-71ab-482c-9c70-92b226c61ca5",
+			"name": "GET /health",
+			"url": "https://focusforest-backend.onrender.com/health",
+			"time": 543,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200": true,
+				"Response has status ok": true,
+				"Response has timestamp": true
+			},
+			"testPassFailCounts": {
+				"Status is 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has status ok": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has timestamp": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				543
+			],
+			"allTests": [
+				{
+					"Status is 200": true,
+					"Response has status ok": true,
+					"Response has timestamp": true
+				}
+			]
+		},
+		{
+			"id": "a851ecee-fe1f-4695-9474-c9a41ce8d72d",
+			"name": "POST /auth/signup",
+			"url": "https://focusforest-backend.onrender.com/api/v1/auth/signup",
+			"time": 2840,
+			"responseCode": {
+				"code": 201,
+				"name": "Created"
+			},
+			"tests": {
+				"Status is 201 (new user) or 409 (already registered — re-run)": true,
+				"Response contains accessToken": true,
+				"Response contains user object with correct fields": true
+			},
+			"testPassFailCounts": {
+				"Status is 201 (new user) or 409 (already registered — re-run)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains accessToken": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains user object with correct fields": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2840
+			],
+			"allTests": [
+				{
+					"Status is 201 (new user) or 409 (already registered — re-run)": true,
+					"Response contains accessToken": true,
+					"Response contains user object with correct fields": true
+				}
+			]
+		},
+		{
+			"id": "1c94a950-d1f2-434a-8cf5-119679e5ea7d",
+			"name": "POST /auth/login",
+			"url": "https://focusforest-backend.onrender.com/api/v1/auth/login",
+			"time": 1864,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response contains accessToken": true,
+				"Response contains user object": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains accessToken": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains user object": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1864
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response contains accessToken": true,
+					"Response contains user object": true
+				}
+			]
+		},
+		{
+			"id": "46c20297-a67e-4615-828d-de9fe66e190f",
+			"name": "GET /auth/me",
+			"url": "https://focusforest-backend.onrender.com/api/v1/auth/me",
+			"time": 1262,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has id": true,
+				"Response has email": true,
+				"Response has name": true,
+				"utcOffset equals 330 (IST)": true,
+				"Response has createdAt": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has id": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has email": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has name": {
+					"pass": 1,
+					"fail": 0
+				},
+				"utcOffset equals 330 (IST)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has createdAt": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1262
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has id": true,
+					"Response has email": true,
+					"Response has name": true,
+					"utcOffset equals 330 (IST)": true,
+					"Response has createdAt": true
+				}
+			]
+		},
+		{
+			"id": "490b0474-657f-4549-86b1-3b7510610d9d",
+			"name": "POST /auth/logout",
+			"url": "https://focusforest-backend.onrender.com/api/v1/auth/logout",
+			"time": 1264,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1264
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has message": true
+				}
+			]
+		},
+		{
+			"id": "5e7d1e8c-38c3-422d-b122-7dd56dcbd1d8",
+			"name": "POST /sessions — Classic, task completed",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 6231,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"tree.stageProgress equals 1.5 (25/25 × 1.5)": true,
+				"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)": true,
+				"tree.stage equals 1 (Sprout at 1.5 progress)": true,
+				"tree.totalSessions equals 1": true,
+				"Response has streak object": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.stageProgress equals 1.5 (25/25 × 1.5)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.stage equals 1 (Sprout at 1.5 progress)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.totalSessions equals 1": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has streak object": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				6231
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"tree.stageProgress equals 1.5 (25/25 × 1.5)": true,
+					"tree.glowLevel equals 4 (1 task completed / 1 session = 100%)": true,
+					"tree.stage equals 1 (Sprout at 1.5 progress)": true,
+					"tree.totalSessions equals 1": true,
+					"Response has streak object": true
+				}
+			]
+		},
+		{
+			"id": "7185616c-61a8-49d9-93cf-d3f6381940ad",
+			"name": "POST /sessions — Dedup test (same clientSessionId → 409)",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 1283,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 409 Conflict (dedup)": true,
+				"Error code is DUPLICATE_SESSION": true,
+				"Error has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 409 Conflict (dedup)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is DUPLICATE_SESSION": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1283
+			],
+			"allTests": [
+				{
+					"Status is 409 Conflict (dedup)": true,
+					"Error code is DUPLICATE_SESSION": true,
+					"Error has message": true
+				}
+			]
+		},
+		{
+			"id": "f863e739-38e3-452b-b891-9661bdbfa738",
+			"name": "POST /sessions — Classic, no task",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 6389,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"tree.stageProgress equals 2.5 (cumulative)": true,
+				"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)": true,
+				"tree.totalSessions equals 2": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.stageProgress equals 2.5 (cumulative)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.totalSessions equals 2": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				6389
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"tree.stageProgress equals 2.5 (cumulative)": true,
+					"tree.glowLevel is less than 4 (mixed: 1 task + 1 no-task)": true,
+					"tree.totalSessions equals 2": true
+				}
+			]
+		},
+		{
+			"id": "ccd66e76-7cb1-4f58-abe0-40f021dd4087",
+			"name": "POST /sessions — Sprint, task carried",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 6254,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)": true,
+				"tree.stage equals 3 (Young Tree at ≥3.0)": true,
+				"tree.totalSessions equals 3": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.stage equals 3 (Young Tree at ≥3.0)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"tree.totalSessions equals 3": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				6254
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"tree.stageProgress equals 3.1 (cumulative: 2.5 + 0.6)": true,
+					"tree.stage equals 3 (Young Tree at ≥3.0)": true,
+					"tree.totalSessions equals 3": true
+				}
+			]
+		},
+		{
+			"id": "e1ea9dd0-72ad-4ce6-8a0d-ecbf7a96fa1c",
+			"name": "GET /sessions — Session history",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 2114,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has sessions array": true,
+				"sessions array has total field": true,
+				"Array length is 3 (dedup rejected one)": true,
+				"Each session has required fields": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has sessions array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"sessions array has total field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Array length is 3 (dedup rejected one)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Each session has required fields": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2114
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has sessions array": true,
+					"sessions array has total field": true,
+					"Array length is 3 (dedup rejected one)": true,
+					"Each session has required fields": true
+				}
+			]
+		},
+		{
+			"id": "a055c009-aa9b-41cb-b106-1339a778c213",
+			"name": "GET /sessions — With date filter",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions?startDate=2026-01-01&endDate=2026-12-31&limit=10&offset=0",
+			"time": 1248,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has sessions array": true,
+				"Response has total count": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has sessions array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has total count": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1248
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has sessions array": true,
+					"Response has total count": true
+				}
+			]
+		},
+		{
+			"id": "571c6cf3-158e-43ff-84b1-6b0ffdfa3a3a",
+			"name": "GET /trees/today",
+			"url": "https://focusforest-backend.onrender.com/api/v1/trees/today",
+			"time": 2160,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has date field": true,
+				"Response has stage field": true,
+				"Response has glowLevel field": true,
+				"Response has totalSessions field": true,
+				"isBare is false (day not over yet)": true,
+				"finalisedAt is null (day not finalised yet)": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has date field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has stage field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has glowLevel field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has totalSessions field": {
+					"pass": 1,
+					"fail": 0
+				},
+				"isBare is false (day not over yet)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"finalisedAt is null (day not finalised yet)": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2160
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has date field": true,
+					"Response has stage field": true,
+					"Response has glowLevel field": true,
+					"Response has totalSessions field": true,
+					"isBare is false (day not over yet)": true,
+					"finalisedAt is null (day not finalised yet)": true
+				}
+			]
+		},
+		{
+			"id": "4c5a1a4b-5aa4-4707-aec0-1fc3b2bbe03f",
+			"name": "GET /trees/calendar?month=3&year=2026",
+			"url": "https://focusforest-backend.onrender.com/api/v1/trees/calendar?month=3&year=2026",
+			"time": 1246,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has trees array": true,
+				"Each tree has date, stage, glowLevel": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has trees array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Each tree has date, stage, glowLevel": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1246
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has trees array": true,
+					"Each tree has date, stage, glowLevel": true
+				}
+			]
+		},
+		{
+			"id": "296459a5-a689-49c2-b9a6-8953929cd502",
+			"name": "GET /trees/week/2026-W12",
+			"url": "https://focusforest-backend.onrender.com/api/v1/trees/week/2026-W12",
+			"time": 1212,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has weekId": true,
+				"Response has 7 day slots": true,
+				"Response has complete boolean flag": true,
+				"Response has startDate and endDate": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has weekId": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has 7 day slots": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has complete boolean flag": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has startDate and endDate": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1212
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has weekId": true,
+					"Response has 7 day slots": true,
+					"Response has complete boolean flag": true,
+					"Response has startDate and endDate": true
+				}
+			]
+		},
+		{
+			"id": "3067d729-ddf4-40fa-8d6e-2ff8f21ac999",
+			"name": "POST /groups — Create group",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups",
+			"time": 2243,
+			"responseCode": {
+				"code": 201,
+				"name": "Created"
+			},
+			"tests": {
+				"Status is 201 Created": true,
+				"Response has id": true,
+				"Response has name": true,
+				"Response has inviteCode": true,
+				"inviteCode is 6 characters": true,
+				"memberCount equals 1": true
+			},
+			"testPassFailCounts": {
+				"Status is 201 Created": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has id": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has name": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has inviteCode": {
+					"pass": 1,
+					"fail": 0
+				},
+				"inviteCode is 6 characters": {
+					"pass": 1,
+					"fail": 0
+				},
+				"memberCount equals 1": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2243
+			],
+			"allTests": [
+				{
+					"Status is 201 Created": true,
+					"Response has id": true,
+					"Response has name": true,
+					"Response has inviteCode": true,
+					"inviteCode is 6 characters": true,
+					"memberCount equals 1": true
+				}
+			]
+		},
+		{
+			"id": "04b4dace-ad7d-47d0-ac82-ec2c4ba0eea4",
+			"name": "GET /groups/:groupId — Group details",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups/85c18a98-ab97-472d-91b9-0e9c588fc112",
+			"time": 2806,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has members array": true,
+				"members array has 1 entry (creator only)": true,
+				"Each member has userId, name, currentStreak, joinedAt": true,
+				"Response has forestStats": true,
+				"Response has adminUserId": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has members array": {
+					"pass": 1,
+					"fail": 0
+				},
+				"members array has 1 entry (creator only)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Each member has userId, name, currentStreak, joinedAt": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has forestStats": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has adminUserId": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2806
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has members array": true,
+					"members array has 1 entry (creator only)": true,
+					"Each member has userId, name, currentStreak, joinedAt": true,
+					"Response has forestStats": true,
+					"Response has adminUserId": true
+				}
+			]
+		},
+		{
+			"id": "16bed6f6-1c92-4dee-b055-85089abc4fc6",
+			"name": "GET /groups/:groupId/calendar",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups/85c18a98-ab97-472d-91b9-0e9c588fc112/calendar?month=3&year=2026",
+			"time": 2791,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has days array": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has days array": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2791
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has days array": true
+				}
+			]
+		},
+		{
+			"id": "8dc002b0-2ec1-45b0-926b-d6d75021a0e4",
+			"name": "POST /groups/join — Own group → 409 ALREADY_MEMBER",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups/join",
+			"time": 1946,
+			"responseCode": {
+				"code": 409,
+				"name": "Conflict"
+			},
+			"tests": {
+				"Status is 409 Conflict (already member)": true,
+				"Error code is ALREADY_MEMBER": true,
+				"Error has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 409 Conflict (already member)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is ALREADY_MEMBER": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1946
+			],
+			"allTests": [
+				{
+					"Status is 409 Conflict (already member)": true,
+					"Error code is ALREADY_MEMBER": true,
+					"Error has message": true
+				}
+			]
+		},
+		{
+			"id": "b550e81a-c53c-497e-9ada-d1d57926de23",
+			"name": "DELETE /groups/:groupId/members/:userId — Leave group",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups/85c18a98-ab97-472d-91b9-0e9c588fc112/members/546c28d1-ed3d-4d14-8b0d-9f996b5c1555",
+			"time": 3073,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status is 200 OK": true,
+				"Response has success message": true
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response has success message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				3073
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": true,
+					"Response has success message": true
+				}
+			]
+		},
+		{
+			"id": "319acec6-a89f-4b0f-9ea8-51410af5f5a2",
+			"name": "GET /auth/me — No token → 401",
+			"url": "https://focusforest-backend.onrender.com/api/v1/auth/me",
+			"time": 343,
+			"responseCode": {
+				"code": 401,
+				"name": "Unauthorized"
+			},
+			"tests": {
+				"Status is 401 Unauthorized": true,
+				"Error envelope has code and message": true
+			},
+			"testPassFailCounts": {
+				"Status is 401 Unauthorized": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope has code and message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				343
+			],
+			"allTests": [
+				{
+					"Status is 401 Unauthorized": true,
+					"Error envelope has code and message": true
+				}
+			]
+		},
+		{
+			"id": "6395e4b7-a935-4e10-9573-56ed1bdc4c8a",
+			"name": "POST /sessions — Invalid variant → 400",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 514,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status is 400 Bad Request": true,
+				"Error code is VALIDATION_ERROR": true,
+				"Error envelope is correct shape": true
+			},
+			"testPassFailCounts": {
+				"Status is 400 Bad Request": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is VALIDATION_ERROR": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope is correct shape": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				514
+			],
+			"allTests": [
+				{
+					"Status is 400 Bad Request": true,
+					"Error code is VALIDATION_ERROR": true,
+					"Error envelope is correct shape": true
+				}
+			]
+		},
+		{
+			"id": "b4e557af-5591-4b2a-ba07-79a383698f3d",
+			"name": "POST /sessions — Missing required fields → 400",
+			"url": "https://focusforest-backend.onrender.com/api/v1/sessions",
+			"time": 628,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status is 400 Bad Request": true,
+				"Error code is VALIDATION_ERROR": true,
+				"Error envelope matches { error: { code, message } }": true
+			},
+			"testPassFailCounts": {
+				"Status is 400 Bad Request": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is VALIDATION_ERROR": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope matches { error: { code, message } }": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				628
+			],
+			"allTests": [
+				{
+					"Status is 400 Bad Request": true,
+					"Error code is VALIDATION_ERROR": true,
+					"Error envelope matches { error: { code, message } }": true
+				}
+			]
+		},
+		{
+			"id": "b0c1ac32-9d54-4eb7-83b4-9c60ea5697ae",
+			"name": "GET /groups/nonexistent-id → 404",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups/nonexistent-id",
+			"time": 1225,
+			"responseCode": {
+				"code": 404,
+				"name": "Not Found"
+			},
+			"tests": {
+				"Status is 404 or 403 (not found or not a member)": true,
+				"Error envelope has code and message": true
+			},
+			"testPassFailCounts": {
+				"Status is 404 or 403 (not found or not a member)": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope has code and message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1225
+			],
+			"allTests": [
+				{
+					"Status is 404 or 403 (not found or not a member)": true,
+					"Error envelope has code and message": true
+				}
+			]
+		},
+		{
+			"id": "263e485a-2988-49d2-b48d-d70f594aed9d",
+			"name": "POST /groups/join — Wrong invite code → 404",
+			"url": "https://focusforest-backend.onrender.com/api/v1/groups/join",
+			"time": 1210,
+			"responseCode": {
+				"code": 404,
+				"name": "Not Found"
+			},
+			"tests": {
+				"Status is 404 Not Found": true,
+				"Error code is INVALID_INVITE_CODE": true,
+				"Error envelope has message": true
+			},
+			"testPassFailCounts": {
+				"Status is 404 Not Found": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error code is INVALID_INVITE_CODE": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Error envelope has message": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1210
+			],
+			"allTests": [
+				{
+					"Status is 404 Not Found": true,
+					"Error code is INVALID_INVITE_CODE": true,
+					"Error envelope has message": true
+				}
+			]
+		},
+		{
+			"id": "a1071a8f-be4c-42e3-9adc-c94075488d65",
+			"name": "POST /dev/midnight-reset",
+			"url": "https://focusforest-backend.onrender.com/dev/midnight-reset",
+			"time": 345,
+			"responseCode": {
+				"code": 404,
+				"name": "Not Found"
+			},
+			"tests": {
+				"Status is 200 OK": false,
+				"Response has ok: true": false,
+				"Response has message": false
+			},
+			"testPassFailCounts": {
+				"Status is 200 OK": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Response has ok: true": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Response has message": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				345
+			],
+			"allTests": [
+				{
+					"Status is 200 OK": false,
+					"Response has ok: true": false,
+					"Response has message": false
+				}
+			]
+		}
+	],
+	"count": 1,
+	"totalTime": 53034,
+	"collection": {
+		"requests": [
+			{
+				"id": "07592bbf-71ab-482c-9c70-92b226c61ca5",
+				"method": "GET"
+			},
+			{
+				"id": "a851ecee-fe1f-4695-9474-c9a41ce8d72d",
+				"method": "POST"
+			},
+			{
+				"id": "1c94a950-d1f2-434a-8cf5-119679e5ea7d",
+				"method": "POST"
+			},
+			{
+				"id": "46c20297-a67e-4615-828d-de9fe66e190f",
+				"method": "GET"
+			},
+			{
+				"id": "490b0474-657f-4549-86b1-3b7510610d9d",
+				"method": "POST"
+			},
+			{
+				"id": "5e7d1e8c-38c3-422d-b122-7dd56dcbd1d8",
+				"method": "POST"
+			},
+			{
+				"id": "7185616c-61a8-49d9-93cf-d3f6381940ad",
+				"method": "POST"
+			},
+			{
+				"id": "f863e739-38e3-452b-b891-9661bdbfa738",
+				"method": "POST"
+			},
+			{
+				"id": "ccd66e76-7cb1-4f58-abe0-40f021dd4087",
+				"method": "POST"
+			},
+			{
+				"id": "e1ea9dd0-72ad-4ce6-8a0d-ecbf7a96fa1c",
+				"method": "GET"
+			},
+			{
+				"id": "a055c009-aa9b-41cb-b106-1339a778c213",
+				"method": "GET"
+			},
+			{
+				"id": "571c6cf3-158e-43ff-84b1-6b0ffdfa3a3a",
+				"method": "GET"
+			},
+			{
+				"id": "4c5a1a4b-5aa4-4707-aec0-1fc3b2bbe03f",
+				"method": "GET"
+			},
+			{
+				"id": "296459a5-a689-49c2-b9a6-8953929cd502",
+				"method": "GET"
+			},
+			{
+				"id": "3067d729-ddf4-40fa-8d6e-2ff8f21ac999",
+				"method": "POST"
+			},
+			{
+				"id": "04b4dace-ad7d-47d0-ac82-ec2c4ba0eea4",
+				"method": "GET"
+			},
+			{
+				"id": "16bed6f6-1c92-4dee-b055-85089abc4fc6",
+				"method": "GET"
+			},
+			{
+				"id": "8dc002b0-2ec1-45b0-926b-d6d75021a0e4",
+				"method": "POST"
+			},
+			{
+				"id": "b550e81a-c53c-497e-9ada-d1d57926de23",
+				"method": "DELETE"
+			},
+			{
+				"id": "319acec6-a89f-4b0f-9ea8-51410af5f5a2",
+				"method": "GET"
+			},
+			{
+				"id": "6395e4b7-a935-4e10-9573-56ed1bdc4c8a",
+				"method": "POST"
+			},
+			{
+				"id": "b4e557af-5591-4b2a-ba07-79a383698f3d",
+				"method": "POST"
+			},
+			{
+				"id": "b0c1ac32-9d54-4eb7-83b4-9c60ea5697ae",
+				"method": "GET"
+			},
+			{
+				"id": "263e485a-2988-49d2-b48d-d70f594aed9d",
+				"method": "POST"
+			},
+			{
+				"id": "a1071a8f-be4c-42e3-9adc-c94075488d65",
+				"method": "POST"
+			}
+		]
+	}
+}

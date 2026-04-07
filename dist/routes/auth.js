@@ -167,6 +167,7 @@ router.get("/me", auth_1.requireAuth, async (req, res) => {
         name: user.name,
         avatarUrl: user.avatarUrl,
         utcOffset: user.utcOffset,
+        isPrivate: user.isPrivate,
         createdAt: user.createdAt,
     });
 });

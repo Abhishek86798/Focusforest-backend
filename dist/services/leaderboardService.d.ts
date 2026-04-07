@@ -7,7 +7,7 @@ export type SoloLeaderboardEntry = {
     totalTrees: number;
     currentStreak: number;
 };
-export declare function getSoloLeaderboard(page: number, limit: number): Promise<SoloLeaderboardEntry[]>;
+export declare function getSoloLeaderboard(page: number, limit: number, scope: string): Promise<SoloLeaderboardEntry[]>;
 export type GroupLeaderboardEntry = {
     rank: number;
     groupId: string;

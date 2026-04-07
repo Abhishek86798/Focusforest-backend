@@ -21,6 +21,18 @@ const sessionSchema = zod_1.z.object({
     clientSessionId: zod_1.z.string().uuid(),
 });
 // ---------------------------------------------------------------------------
+// Zod schemas for immersive mode endpoints
+// ---------------------------------------------------------------------------
+const startSessionSchema = zod_1.z.object({
+    variant: zod_1.z.enum(["sprint", "classic", "deep_work", "flow", "custom"]),
+    focusMinutes: zod_1.z.number().int().min(1).max(240),
+    taskText: zod_1.z.string().max(200).optional(),
+    clientSessionId: zod_1.z.string().uuid(),
+});
+const completeSessionSchema = zod_1.z.object({
+    taskStatus: zod_1.z.enum(["completed", "carried", "none"]),
+});
+// ---------------------------------------------------------------------------
 // POST /api/v1/sessions
 // Submit a completed focus session. Score engine runs server-side only.
 // ---------------------------------------------------------------------------
@@ -61,6 +73,9 @@ router.post("/", auth_1.requireAuth, (0, validate_1.validate)(sessionSchema), as
             taskStatus: body.taskStatus,
             stageProgress,
             clientSessionId: body.clientSessionId,
+            state: "completed", // Legacy instant submission
+            startedAt: null,
+            expectedEndAt: null,
         },
     });
     // 5. Update daily tree (upsert)
@@ -82,6 +97,167 @@ router.post("/", auth_1.requireAuth, (0, validate_1.validate)(sessionSchema), as
         streak: {
             currentStreak: streak?.currentStreak ?? 0,
         },
+    });
+});
+// ---------------------------------------------------------------------------
+// POST /api/v1/sessions/start
+// Start an immersive mode session (state=active)
+// ---------------------------------------------------------------------------
+router.post("/start", auth_1.requireAuth, (0, validate_1.validate)(startSessionSchema), async (req, res) => {
+    const body = req.body;
+    const userId = req.userId;
+    // 1. Deduplication — reject if clientSessionId already exists
+    const existingSession = await prisma_1.prisma.session.findUnique({
+        where: { clientSessionId: body.clientSessionId },
+    });
+    if (existingSession) {
+        res
+            .status(409)
+            .json((0, apiError_1.apiError)("DUPLICATE_SESSION", "This session has already been started."));
+        return;
+    }
+    // 2. Ensure user exists
+    const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+        res
+            .status(401)
+            .json((0, apiError_1.apiError)("UNAUTHORIZED", "User profile not found."));
+        return;
+    }
+    // 3. Calculate expectedEndAt
+    const startedAt = new Date();
+    const expectedEndAt = new Date(startedAt.getTime() + body.focusMinutes * 60 * 1000);
+    // 4. Create session with state=active
+    const session = await prisma_1.prisma.session.create({
+        data: {
+            userId,
+            variant: body.variant,
+            focusMinutes: body.focusMinutes,
+            taskText: body.taskText ?? null,
+            taskStatus: "none", // Will be set on completion
+            stageProgress: 0, // Will be calculated on completion
+            clientSessionId: body.clientSessionId,
+            state: "active",
+            startedAt,
+            expectedEndAt,
+        },
+    });
+    res.status(201).json({
+        sessionId: session.id,
+        expectedEndAt: session.expectedEndAt,
+    });
+});
+// ---------------------------------------------------------------------------
+// POST /api/v1/sessions/:id/complete
+// Complete an active session (validates 80% elapsed time)
+// ---------------------------------------------------------------------------
+router.post("/:id/complete", auth_1.requireAuth, (0, validate_1.validate)(completeSessionSchema), async (req, res) => {
+    const { id } = req.params;
+    const body = req.body;
+    const userId = req.userId;
+    // 1. Find session and validate ownership + state
+    const session = await prisma_1.prisma.session.findUnique({
+        where: { id },
+    });
+    if (!session) {
+        res.status(404).json((0, apiError_1.apiError)("SESSION_NOT_FOUND", "Session not found."));
+        return;
+    }
+    if (session.userId !== userId) {
+        res.status(403).json((0, apiError_1.apiError)("FORBIDDEN", "You do not own this session."));
+        return;
+    }
+    if (session.state !== "active") {
+        res
+            .status(400)
+            .json((0, apiError_1.apiError)("SESSION_NOT_ACTIVE", `Session is already ${session.state}.`));
+        return;
+    }
+    // 2. Validate 80% elapsed time
+    if (!session.startedAt) {
+        res
+            .status(400)
+            .json((0, apiError_1.apiError)("INVALID_SESSION", "Session has no start time."));
+        return;
+    }
+    const now = new Date();
+    const elapsedMs = now.getTime() - session.startedAt.getTime();
+    const elapsedMinutes = elapsedMs / (60 * 1000);
+    const requiredMinutes = session.focusMinutes * 0.8;
+    if (elapsedMinutes < requiredMinutes) {
+        res.status(400).json((0, apiError_1.apiError)("SESSION_TOO_SHORT", `Session must run for at least ${requiredMinutes.toFixed(1)} minutes (80% of ${session.focusMinutes} minutes). Elapsed: ${elapsedMinutes.toFixed(1)} minutes.`));
+        return;
+    }
+    // 3. Run score engine
+    const { stageProgress } = (0, scoreEngine_1.computeStageProgress)({
+        focusMinutes: session.focusMinutes,
+        taskStatus: body.taskStatus,
+    });
+    // 4. Update session to completed
+    await prisma_1.prisma.session.update({
+        where: { id },
+        data: {
+            state: "completed",
+            taskStatus: body.taskStatus,
+            stageProgress,
+        },
+    });
+    // 5. Update daily tree
+    const tree = await (0, treeService_1.upsertDailyTree)(userId, stageProgress, body.taskStatus);
+    // 6. Get current streak
+    const streak = await prisma_1.prisma.streak.findUnique({
+        where: { userId },
+        select: { currentStreak: true },
+    });
+    // 7. Return response
+    res.status(200).json({
+        tree: {
+            stage: tree.stage,
+            glowLevel: tree.glowLevel,
+            stageProgress: tree.stageProgress,
+            totalSessions: tree.totalSessions,
+            sessionsWithTask: tree.sessionsWithTask,
+        },
+        streak: {
+            currentStreak: streak?.currentStreak ?? 0,
+        },
+    });
+});
+// ---------------------------------------------------------------------------
+// POST /api/v1/sessions/:id/abandon
+// Abandon an active session
+// ---------------------------------------------------------------------------
+router.post("/:id/abandon", auth_1.requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const userId = req.userId;
+    // 1. Find session and validate ownership + state
+    const session = await prisma_1.prisma.session.findUnique({
+        where: { id },
+    });
+    if (!session) {
+        res.status(404).json((0, apiError_1.apiError)("SESSION_NOT_FOUND", "Session not found."));
+        return;
+    }
+    if (session.userId !== userId) {
+        res.status(403).json((0, apiError_1.apiError)("FORBIDDEN", "You do not own this session."));
+        return;
+    }
+    if (session.state !== "active") {
+        res
+            .status(400)
+            .json((0, apiError_1.apiError)("SESSION_NOT_ACTIVE", `Session is already ${session.state}.`));
+        return;
+    }
+    // 2. Update session to abandoned
+    await prisma_1.prisma.session.update({
+        where: { id },
+        data: {
+            state: "abandoned",
+            abandonedAt: new Date(),
+        },
+    });
+    res.status(200).json({
+        message: "Session abandoned successfully.",
     });
 });
 // ---------------------------------------------------------------------------

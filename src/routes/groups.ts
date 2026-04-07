@@ -9,9 +9,27 @@ import {
   getGroupDetails,
   getGroupCalendar,
   removeMember,
+  getUserGroups,
+  getGroupStats,
+  getMemberStatus,
+  deleteGroup,
 } from "../services/groupService";
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/groups
+// Returns all groups the authenticated user belongs to (for sidebar list).
+// ---------------------------------------------------------------------------
+router.get(
+  "/",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const groups = await getUserGroups(req.userId);
+
+    res.status(200).json({ groups });
+  }
+);
 
 // ---------------------------------------------------------------------------
 // POST /api/v1/groups
@@ -77,6 +95,60 @@ router.post(
       name: result.group.name,
       memberCount: result.group.memberCount,
     });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/groups/:id/stats
+// Returns aggregate stat tiles for the selected group.
+// ---------------------------------------------------------------------------
+router.get(
+  "/:id/stats",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const groupId = req.params.id as string;
+
+    const result = await getGroupStats(groupId, req.userId);
+
+    if (!result.ok) {
+      switch (result.error.code) {
+        case "GROUP_NOT_FOUND":
+          res.status(404).json(apiError("GROUP_NOT_FOUND", "Group not found."));
+          return;
+        case "NOT_GROUP_MEMBER":
+          res.status(403).json(apiError("NOT_GROUP_MEMBER", "You are not a member of this group."));
+          return;
+      }
+    }
+
+    res.status(200).json(result.stats);
+  }
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/groups/:id/members/status
+// Returns real-time member status for the Members table.
+// ---------------------------------------------------------------------------
+router.get(
+  "/:id/members/status",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const groupId = req.params.id as string;
+
+    const result = await getMemberStatus(groupId, req.userId);
+
+    if (!result.ok) {
+      switch (result.error.code) {
+        case "GROUP_NOT_FOUND":
+          res.status(404).json(apiError("GROUP_NOT_FOUND", "Group not found."));
+          return;
+        case "NOT_GROUP_MEMBER":
+          res.status(403).json(apiError("NOT_GROUP_MEMBER", "You are not a member of this group."));
+          return;
+      }
+    }
+
+    res.status(200).json({ members: result.members });
   }
 );
 
@@ -163,6 +235,33 @@ router.get(
     }
 
     res.status(200).json({ days: result.days });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/groups/:id
+// Admin-only: deletes the entire group and removes all members.
+// ---------------------------------------------------------------------------
+router.delete(
+  "/:id",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const groupId = req.params.id as string;
+
+    const result = await deleteGroup(groupId, req.userId);
+
+    if (!result.ok) {
+      switch (result.error.code) {
+        case "GROUP_NOT_FOUND":
+          res.status(404).json(apiError("GROUP_NOT_FOUND", "Group not found."));
+          return;
+        case "NOT_GROUP_ADMIN":
+          res.status(403).json(apiError("NOT_GROUP_ADMIN", "Only the group admin can delete the group."));
+          return;
+      }
+    }
+
+    res.status(200).json({ message: "Group deleted." });
   }
 );
 
