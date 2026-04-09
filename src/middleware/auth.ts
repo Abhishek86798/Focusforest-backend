@@ -24,15 +24,20 @@ export async function requireAuth(
   next: NextFunction
 ): Promise<void> {
   const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (authHeader?.startsWith("Bearer ")) {
+    token = authHeader.slice(7); // strip "Bearer "
+  } else if (req.cookies && req.cookies["sb-access-token"]) {
+    token = req.cookies["sb-access-token"];
+  }
+
+  if (!token) {
     res
       .status(401)
       .json(apiError("UNAUTHORIZED", "Authentication required. Please log in."));
     return;
   }
-
-  const token = authHeader.slice(7); // strip "Bearer "
 
   const {
     data: { user },
