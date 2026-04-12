@@ -1,7 +1,42 @@
-node_modules/
-dist/
+# Environment files (CRITICAL - never commit these)
 .env
-*.env
 .env.local
+.env.development
 .env.production
-DEPLOY_TO_RENDER.md
+.env.staging
+.env*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Prisma generated client
+node_modules/.prisma/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/

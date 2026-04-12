@@ -26,7 +26,8 @@ export type ErrorCode =
   | "INVALID_SESSION"
   | "NOT_GROUP_MEMBER"
   | "NOT_GROUP_ADMIN"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  | "RATE_LIMITED";
 
 export function apiError(
   code: ErrorCode,

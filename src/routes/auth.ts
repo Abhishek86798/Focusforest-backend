@@ -5,14 +5,28 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { apiError } from "../lib/apiError";
-import { updateSoloLeaderboard } from "../services/leaderboardService";
+import rateLimit from "express-rate-limit";
+import { leaderboardQueue } from "../lib/queue";
+import { revokeToken } from "../lib/tokenBlocklist";
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/signup  [public]
-// Creates a Supabase Auth user + inserts a row in public.users.
-// ---------------------------------------------------------------------------
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: apiError("RATE_LIMITED", "Too many login attempts, please try again in 15 minutes."),
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: apiError("RATE_LIMITED", "Too many accounts created from this IP, please try again in an hour."),
+});
+
 const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -22,19 +36,18 @@ const signupSchema = z.object({
 
 router.post(
   "/signup",
+  signupLimiter,
   validate(signupSchema),
   async (req: Request, res: Response): Promise<void> => {
     const { email, password, name, utcOffset } = req.body as z.infer<typeof signupSchema>;
 
-    // 1. Create user in Supabase Auth
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // auto-confirm for dev; set to false in prod if using email verification
+      email_confirm: true,
     });
 
     if (error) {
-      // Supabase returns a specific message when email is taken
       if (error.message.toLowerCase().includes("already") || error.status === 422) {
         res.status(409).json(apiError("EMAIL_TAKEN", "An account with this email already exists."));
         return;
@@ -45,24 +58,21 @@ router.post(
 
     const authUser = data.user;
 
-    // 2. Insert matching row in public.users
     const user = await prisma.user.create({
       data: {
-        id: authUser.id, // same UUID as Supabase Auth
+        id: authUser.id,
         email,
         name,
         utcOffset,
       },
     });
 
-    // 3. Sign in immediately to return a JWT
     const { data: session, error: loginError } = await supabaseAnon.auth.signInWithPassword({
       email,
       password,
     });
 
     if (loginError || !session.session) {
-      // User created but sign-in failed — still a success, just no token
       res.status(201).json({
         user: {
           id: user.id,
@@ -75,18 +85,17 @@ router.post(
       return;
     }
 
-    // Set httpOnly cookies (for future frontend use)
     res.cookie("sb-access-token", session.session.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 3600 * 1000, // 1 hour
+      maxAge: 3600 * 1000,
     });
     res.cookie("sb-refresh-token", session.session.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 3600 * 1000, // 7 days
+      maxAge: 7 * 24 * 3600 * 1000,
     });
 
     res.status(201).json({
@@ -97,15 +106,11 @@ router.post(
         avatarUrl: user.avatarUrl,
         utcOffset: user.utcOffset,
       },
-      // Also return token for API clients (Postman, mobile apps)
       accessToken: session.session.access_token,
     });
   }
 );
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/login  [public]
-// ---------------------------------------------------------------------------
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -113,6 +118,7 @@ const loginSchema = z.object({
 
 router.post(
   "/login",
+  loginLimiter,
   validate(loginSchema),
   async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body as z.infer<typeof loginSchema>;
@@ -127,18 +133,15 @@ router.post(
       return;
     }
 
-    // Fetch profile from public.users
     const user = await prisma.user.findUnique({
       where: { id: data.user.id },
     });
 
     if (!user) {
-      // Auth user exists but no public.users row — shouldn't happen, but handle gracefully
       res.status(401).json(apiError("UNAUTHORIZED", "User profile not found."));
       return;
     }
 
-    // Set httpOnly cookies
     res.cookie("sb-access-token", data.session.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -164,27 +167,20 @@ router.post(
   }
 );
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/logout
-// ---------------------------------------------------------------------------
 router.post(
   "/logout",
   requireAuth,
-  async (_req: Request, res: Response): Promise<void> => {
-    // Clear cookies
+  async (req: Request, res: Response): Promise<void> => {
+    const token = req.cookies["sb-access-token"] || req.headers.authorization?.slice(7);
+    if (token) await revokeToken(token);
+    
     res.clearCookie("sb-access-token");
     res.clearCookie("sb-refresh-token");
 
-    // Note: JWTs are stateless — we can't truly invalidate them server-side
-    // without a token revocation list (Redis). For v1, clearing cookies is sufficient.
-    // Add ADR if you implement Redis-based revocation in the future.
     res.status(200).json({ message: "Logged out" });
   }
 );
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/auth/me
-// ---------------------------------------------------------------------------
 router.get(
   "/me",
   requireAuth,
@@ -210,9 +206,6 @@ router.get(
   }
 );
 
-// ---------------------------------------------------------------------------
-// PATCH /api/v1/auth/profile
-// ---------------------------------------------------------------------------
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(50).optional(),
   avatarUrl: z.string().nullable().optional(),
@@ -227,7 +220,6 @@ router.patch(
     const updates = req.body as z.infer<typeof updateProfileSchema>;
     const userId = req.userId!;
 
-    // Check if isPrivate is being toggled from true to false
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { isPrivate: true },
@@ -241,20 +233,16 @@ router.patch(
     const wasPrivate = currentUser.isPrivate;
     const willBePublic = updates.isPrivate === false && wasPrivate;
 
-    // Update user profile
     const user = await prisma.user.update({
       where: { id: userId },
       data: updates,
     });
 
-    // If user is going from private to public, immediately update leaderboard
     if (willBePublic) {
-      try {
-        await updateSoloLeaderboard(userId);
-      } catch (err) {
-        console.error(`Failed to update leaderboard for user ${userId}:`, err);
-        // Non-fatal — profile update succeeded
-      }
+      await leaderboardQueue.add("sync-user", { userId }, {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1000 }
+      });
     }
 
     res.status(200).json({
