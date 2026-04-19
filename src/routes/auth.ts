@@ -22,7 +22,7 @@ const loginLimiter = rateLimit({
 
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: apiError("RATE_LIMITED", "Too many accounts created from this IP, please try again in an hour."),
