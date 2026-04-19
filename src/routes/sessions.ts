@@ -16,7 +16,7 @@ const router = Router();
 const sessionSchema = z.object({
   variant: z.enum(["sprint", "classic", "deep_work", "flow", "custom"]),
   focusMinutes: z.number().int().min(1).max(240),
-  taskText: z.string().max(200).optional(),
+  taskText: z.string().max(200).nullish(),
   taskStatus: z.enum(["completed", "carried", "none"]).default("none"),
   clientSessionId: z.string().uuid(),
 });
@@ -29,7 +29,7 @@ type SessionBody = z.infer<typeof sessionSchema>;
 const startSessionSchema = z.object({
   variant: z.enum(["sprint", "classic", "deep_work", "flow", "custom"]),
   focusMinutes: z.number().int().min(1).max(240),
-  taskText: z.string().max(200).optional(),
+  taskText: z.string().max(200).nullish(),
   clientSessionId: z.string().uuid(),
 });
 
