@@ -14,9 +14,12 @@ model User {
   name              String
   avatarUrl         String?            @map("avatar_url")
   utcOffset         Int                @default(0) @map("utc_offset")
+  phone             String?            @unique
+  auth_provider     String?            @default("email")
   isPrivate         Boolean            @default(false) @map("is_private")
   preferences       Json?              @default("{}")
   createdAt         DateTime           @default(now()) @map("created_at")
+  default_variant   String?            @default("classic")
   dailyTrees        DailyTree[]
   groupMemberships  GroupMember[]
   groupsAdmin       Group[]            @relation("GroupAdmin")

@@ -27,7 +27,12 @@ export type ErrorCode =
   | "NOT_GROUP_MEMBER"
   | "NOT_GROUP_ADMIN"
   | "INTERNAL_ERROR"
-  | "RATE_LIMITED";
+  | "RATE_LIMITED"
+  | "OAUTH_INIT_FAILED"
+  | "AUTH_FAILED"
+  | "OTP_SEND_FAILED"
+  | "INVALID_OTP"
+  | "INVALID_TOKEN";
 
 export function apiError(
   code: ErrorCode,

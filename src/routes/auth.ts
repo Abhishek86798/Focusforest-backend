@@ -35,6 +35,461 @@ const signupSchema = z.object({
   utcOffset: z.number().int().min(-720).max(840).default(0),
 });
 
+// ── NEW OAUTH / OTP SCHEMAS & LIMITERS ────────────────────────────────────────
+
+const googleCallbackSchema = z.object({
+  code: z.string().min(1, "Authorization code is required"),
+});
+
+const phoneOtpSchema = z.object({
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, "Invalid phone number format"),
+});
+
+const verifyOtpSchema = z.object({
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, "Invalid phone number format"),
+  otp: z.string().length(6, "OTP must be 6 digits"),
+});
+
+const otpSendLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: apiError("RATE_LIMITED", "Too many OTP requests. Try again in a minute."),
+});
+
+const otpVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: apiError("RATE_LIMITED", "Too many attempts. Try again later."),
+});
+
+// ── GOOGLE OAUTH ROUTES ──────────────────────────────────────────────────────
+
+/**
+ * 1. SUPABASE DASHBOARD CONFIGURATION (MANUAL STEP):
+ * - Go to Supabase Dashboard -> Authentication -> Providers -> Enable "Google"
+ * - Add Google Client ID & Secret
+ * - Set Google Authorized Redirect URI: https://<project>.supabase.co/auth/v1/callback
+ * - Add http://localhost:5173/auth/callback to "Redirect URLs" under Authentication -> URL Configuration
+ */
+router.post("/google", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const redirectTo =
+      process.env.GOOGLE_REDIRECT_URL ||
+      `${process.env.CLIENT_URL || "http://localhost:5173"}/auth/callback`;
+
+    const { data, error } = await supabaseAdmin.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+        // IMPORTANT: skipBrowserRedirect=true so Supabase returns the URL
+        // instead of trying to redirect (we're server-side)
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error || !data.url) {
+      console.error("Google OAuth initiation error:", error);
+      res.status(400).json(apiError("OAUTH_INIT_FAILED", "Failed to initiate Google sign-in."));
+      return;
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: { url: data.url },
+    });
+  } catch (err) {
+    console.error("Google OAuth error:", err);
+    res.status(500).json(apiError("INTERNAL_ERROR", "An unexpected error occurred."));
+  }
+});
+
+router.post(
+  "/callback",
+  validate(googleCallbackSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { code } = req.body as z.infer<typeof googleCallbackSchema>;
+
+      // NOTE: exchangeCodeForSession requires the PKCE verifier that was stored
+      // in the browser during the OAuth initiation. When using supabaseAnon
+      // server-side the verifier won't exist — Supabase will likely reject this.
+      // The /token-callback route below handles the more reliable hash-fragment flow.
+      const { data, error } = await supabaseAnon.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        console.error("OAuth /callback code exchange error:", error.message);
+        res.status(401).json(apiError("AUTH_FAILED", "Failed to authenticate with Google. " + error.message));
+        return;
+      }
+
+      const { session, user: supabaseUser } = data;
+
+      if (!session || !supabaseUser) {
+        res.status(401).json(apiError("AUTH_FAILED", "Authentication failed."));
+        return;
+      }
+
+      let user = await prisma.user.findUnique({
+        where: { id: supabaseUser.id },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            id: supabaseUser.id,
+            email: supabaseUser.email || "",
+            name:
+              supabaseUser.user_metadata?.full_name ||
+              supabaseUser.user_metadata?.name ||
+              supabaseUser.email?.split("@")[0] ||
+              "User",
+            avatarUrl:
+              supabaseUser.user_metadata?.avatar_url ||
+              supabaseUser.user_metadata?.picture ||
+              null,
+            utcOffset: 0,
+            default_variant: "classic",
+            auth_provider: "google",
+          },
+        });
+
+        await prisma.streak.create({
+          data: {
+            userId: user.id,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActiveDate: new Date(),
+          },
+        });
+      } else {
+        if (!user.avatarUrl && supabaseUser.user_metadata?.avatar_url) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { avatarUrl: supabaseUser.user_metadata.avatar_url },
+          });
+        }
+      }
+
+      // Use 'lax' so cookies survive the OAuth cross-site redirect in dev
+      const sameSite = process.env.NODE_ENV === "production" ? "none" : "lax";
+      const secure = process.env.NODE_ENV === "production";
+
+      res.cookie("sb-access-token", session.access_token, {
+        httpOnly: true,
+        secure,
+        sameSite,
+        maxAge: 3600 * 1000,
+        path: "/",
+      });
+      res.cookie("sb-refresh-token", session.refresh_token, {
+        httpOnly: true,
+        secure,
+        sameSite,
+        maxAge: 7 * 24 * 3600 * 1000,
+        path: "/",
+      });
+
+      res.status(200).json({
+        status: "success",
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            phone: user.phone,
+            authProvider: user.auth_provider,
+          },
+        },
+      });
+    } catch (err: any) {
+      console.error("OAuth callback error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "An unexpected error occurred."));
+    }
+  }
+);
+
+// ── TOKEN-CALLBACK: receives hash-fragment tokens from browser PKCE flow ───────
+const tokenCallbackSchema = z.object({
+  access_token: z.string().min(1, "access_token is required"),
+  refresh_token: z.string().min(1, "refresh_token is required"),
+});
+
+router.post(
+  "/token-callback",
+  validate(tokenCallbackSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    console.log("\n🔑 /token-callback hit");
+    try {
+      const { access_token, refresh_token } = req.body as z.infer<typeof tokenCallbackSchema>;
+      console.log("🔑 Step 1: tokens received — access_token present:", !!access_token, "| refresh_token present:", !!refresh_token);
+
+      // Step 2: Verify the access token with Supabase Admin
+      console.log("🔑 Step 2: calling supabaseAdmin.auth.getUser...");
+      const { data: { user: supabaseUser }, error } = await supabaseAdmin.auth.getUser(access_token);
+      console.log("🔑 Step 2 done — userId:", supabaseUser?.id, "| error:", error?.message ?? "none");
+
+      if (error || !supabaseUser) {
+        console.warn("🔑 Step 2 FAILED — invalid token:", error?.message);
+        res.status(401).json(apiError("INVALID_TOKEN", "Invalid or expired token."));
+        return;
+      }
+
+      // Step 3: Look up or create user in Prisma DB (with explicit 8s timeout)
+      const dbTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(Object.assign(new Error("Database connection timeout (ETIMEDOUT)"), { name: "PrismaClientUnknownRequestError" })), 8000)
+      );
+      console.log("🔑 Step 3: prisma.user.findUnique for id:", supabaseUser.id);
+      let user = await Promise.race([
+        prisma.user.findUnique({ where: { id: supabaseUser.id } }),
+        dbTimeout,
+      ]);
+      console.log("🔑 Step 3 done — existing user:", !!user);
+
+      if (!user) {
+        console.log("🔑 Step 4: creating new user in DB...");
+        user = await prisma.user.create({
+          data: {
+            id: supabaseUser.id,
+            email: supabaseUser.email || "",
+            name:
+              supabaseUser.user_metadata?.full_name ||
+              supabaseUser.user_metadata?.name ||
+              supabaseUser.email?.split("@")[0] ||
+              "User",
+            avatarUrl:
+              supabaseUser.user_metadata?.avatar_url ||
+              supabaseUser.user_metadata?.picture ||
+              null,
+            utcOffset: 0,
+            default_variant: "classic",
+            auth_provider: "google",
+          },
+        });
+        console.log("🔑 Step 4 done — user created:", user.id);
+
+        console.log("🔑 Step 4b: creating initial streak...");
+        await prisma.streak.create({
+          data: {
+            userId: user.id,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActiveDate: new Date(),
+          },
+        });
+        console.log("🔑 Step 4b done");
+      } else {
+        // Update avatar from Google if user doesn't have one yet
+        if (!user.avatarUrl && supabaseUser.user_metadata?.avatar_url) {
+          console.log("🔑 Step 4 (existing): updating avatar...");
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { avatarUrl: supabaseUser.user_metadata.avatar_url },
+          });
+          user = { ...user, avatarUrl: supabaseUser.user_metadata.avatar_url };
+        }
+      }
+
+      // Step 5: Set httpOnly cookies
+      console.log("🔑 Step 5: setting cookies...");
+      const sameSite = process.env.NODE_ENV === "production" ? "none" : "lax";
+      const secure = process.env.NODE_ENV === "production";
+
+      res.cookie("sb-access-token", access_token, {
+        httpOnly: true,
+        secure,
+        sameSite,
+        maxAge: 3600 * 1000,
+        path: "/",
+      });
+      res.cookie("sb-refresh-token", refresh_token, {
+        httpOnly: true,
+        secure,
+        sameSite,
+        maxAge: 7 * 24 * 3600 * 1000,
+        path: "/",
+      });
+
+      console.log("🔑 Step 6: sending 200 response for user:", user.email);
+
+      return res.status(200).json({
+        status: "success",
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            phone: user.phone,
+            authProvider: user.auth_provider,
+          },
+        },
+      }) as any;
+    } catch (err: any) {
+      // Log the full error so we can diagnose exactly where it crashed
+      console.error("\n🔑 ❌ /token-callback CRASH at step above ↑");
+      console.error("🔑 Error name:", err?.name);
+      console.error("🔑 Error code:", err?.code);
+      console.error("🔑 Error message:", err?.message);
+
+      // Prisma DB connection errors (can't reach Supabase Postgres from local network)
+      const isPrismaErr =
+        err?.name === "PrismaClientInitializationError" ||
+        err?.name === "PrismaClientKnownRequestError" ||
+        err?.name === "PrismaClientUnknownRequestError" ||
+        String(err?.code ?? "").startsWith("P") ||
+        String(err?.message ?? "").includes("ETIMEDOUT") ||
+        String(err?.message ?? "").includes("ECONNREFUSED") ||
+        String(err?.message ?? "").includes("socket") ||
+        String(err?.message ?? "").includes("Can't reach database");
+
+      if (isPrismaErr) {
+        console.error("🔑 Prisma/DB error — DB may be unreachable from this network (port 6543 blocked?)");
+        res.status(503).json({ status: "error", code: "SERVICE_UNAVAILABLE", message: "Database connection failed. Please try again." });
+        return;
+      }
+
+      res.status(500).json(apiError("INTERNAL_ERROR", "An unexpected error occurred."));
+    }
+  }
+);
+
+// ── PHONE OTP ROUTES ──────────────────────────────────────────────────────────
+
+/**
+ * 2. SUPABASE DASHBOARD CONFIGURATION (MANUAL STEP):
+ * - Go to Supabase Dashboard -> Authentication -> Providers -> Enable "Phone"
+ * - Select Twilio as Provider
+ * - Configure Twilio Account SID, Auth Token, and Messaging Service SID
+ */
+router.post(
+  "/phone/send-otp",
+  otpSendLimiter,
+  validate(phoneOtpSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { phone } = req.body as z.infer<typeof phoneOtpSchema>;
+
+      console.log('📱 OTP request for:', phone);
+
+      const { error } = await supabaseAdmin.auth.signInWithOtp({
+        phone: phone,
+      });
+
+      if (error) {
+        console.error('📱 Supabase OTP error:', error.message, error.status);
+        res.status(400).json(apiError("OTP_SEND_FAILED", error.message || "Failed to send OTP. Please try again."));
+        return;
+      }
+
+      console.log('📱 OTP sent successfully to:', phone);
+      res.status(200).json({
+        status: "success",
+        message: "OTP sent successfully.",
+      });
+    } catch (err) {
+      console.error("Phone OTP error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "An unexpected error occurred."));
+    }
+  }
+);
+
+router.post(
+  "/phone/verify-otp",
+  otpVerifyLimiter,
+  validate(verifyOtpSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { phone, otp } = req.body as z.infer<typeof verifyOtpSchema>;
+
+      const { data, error } = await supabaseAnon.auth.verifyOtp({
+        phone: phone,
+        token: otp,
+        type: "sms",
+      });
+
+      if (error) {
+        console.error("OTP verification error:", error);
+        res.status(401).json(apiError("INVALID_OTP", "Invalid or expired OTP. Please try again."));
+        return;
+      }
+
+      const { session, user: supabaseUser } = data;
+
+      if (!session || !supabaseUser) {
+        res.status(401).json(apiError("AUTH_FAILED", "Authentication failed."));
+        return;
+      }
+
+      let user = await prisma.user.findUnique({
+        where: { id: supabaseUser.id },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            id: supabaseUser.id,
+            email: supabaseUser.phone || "",
+            name: `User${supabaseUser.phone?.slice(-4) || ""}`,
+            avatarUrl: null,
+            phone: supabaseUser.phone,
+            utcOffset: 0,
+            default_variant: "classic",
+            auth_provider: "phone",
+          },
+        });
+
+        await prisma.streak.create({
+          data: {
+            userId: user.id,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActiveDate: new Date(),
+          },
+        });
+      }
+
+      res.cookie("sb-access-token", session.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 3600 * 1000,
+      });
+      res.cookie("sb-refresh-token", session.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 3600 * 1000,
+      });
+
+      res.status(200).json({
+        status: "success",
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            phone: user.phone,
+            authProvider: user.auth_provider,
+          },
+        },
+      });
+    } catch (err: any) {
+      console.error("Phone verify error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "An unexpected error occurred."));
+    }
+  }
+);
+
 router.post(
   "/signup",
   signupLimiter,
@@ -228,8 +683,11 @@ router.get(
         email: user.email,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        authProvider: user.auth_provider,
         utcOffset: user.utcOffset,
         isPrivate: user.isPrivate,
+        default_variant: user.default_variant,
         createdAt: user.createdAt,
       });
     } catch (err: any) {
@@ -247,6 +705,7 @@ const updateProfileSchema = z.object({
   name: z.string().min(1).max(50).optional(),
   avatarUrl: z.string().nullable().optional(),
   isPrivate: z.boolean().optional(),
+  default_variant: z.enum(['sprint', 'classic', 'deep_work', 'flow']).optional(),
 });
 
 router.patch(
@@ -290,6 +749,7 @@ router.patch(
         avatarUrl: user.avatarUrl,
         utcOffset: user.utcOffset,
         isPrivate: user.isPrivate,
+        default_variant: user.default_variant,
         createdAt: user.createdAt,
       });
     } catch (err: any) {

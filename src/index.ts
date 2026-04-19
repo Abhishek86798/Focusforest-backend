@@ -31,7 +31,7 @@ if (process.env.NODE_ENV !== "production") {
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (allowedOrigins.includes(origin as string)) {
+      if (!origin || allowedOrigins.includes(origin as string)) {
         return callback(null, true);
       }
       callback(new Error(`CORS: origin '${origin}' not allowed`));
