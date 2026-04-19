@@ -18,6 +18,9 @@ import { startMidnightCron, runMidnightReset } from "./jobs/midnightReset";
 import { apiError } from "./lib/apiError";
 
 const app = express();
+// Required: Render runs behind a reverse proxy.
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT ?? 3000;
 
 const allowedOrigins: string[] = process.env.APP_URL
