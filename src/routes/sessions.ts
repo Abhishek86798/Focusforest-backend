@@ -350,48 +350,53 @@ router.get(
   "/",
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
-    const query = sessionQuerySchema.safeParse(req.query);
-    if (!query.success) {
-      res.status(400).json(apiError("VALIDATION_ERROR", "Invalid query parameters."));
-      return;
+    try {
+      const query = sessionQuerySchema.safeParse(req.query);
+      if (!query.success) {
+        res.status(400).json(apiError("VALIDATION_ERROR", "Invalid query parameters."));
+        return;
+      }
+
+      const { startDate, endDate, limit, offset } = query.data;
+
+      const where = {
+        userId: req.userId,
+        ...(startDate || endDate
+          ? {
+              createdAt: {
+                ...(startDate ? { gte: new Date(startDate) } : {}),
+                ...(endDate
+                  ? { lt: new Date(new Date(endDate).getTime() + 86400000) }
+                  : {}),
+              },
+            }
+          : {}),
+      };
+
+      const [sessions, total] = await Promise.all([
+        prisma.session.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          skip: offset,
+          select: {
+            id: true,
+            variant: true,
+            focusMinutes: true,
+            taskText: true,
+            taskStatus: true,
+            stageProgress: true,
+            createdAt: true,
+          },
+        }),
+        prisma.session.count({ where }),
+      ]);
+
+      res.status(200).json({ sessions, total });
+    } catch (err) {
+      console.error("Sessions list error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "Failed to fetch sessions."));
     }
-
-    const { startDate, endDate, limit, offset } = query.data;
-
-    const where = {
-      userId: req.userId,
-      ...(startDate || endDate
-        ? {
-            createdAt: {
-              ...(startDate ? { gte: new Date(startDate) } : {}),
-              ...(endDate
-                ? { lt: new Date(new Date(endDate).getTime() + 86400000) }
-                : {}),
-            },
-          }
-        : {}),
-    };
-
-    const [sessions, total] = await Promise.all([
-      prisma.session.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: limit,
-        skip: offset,
-        select: {
-          id: true,
-          variant: true,
-          focusMinutes: true,
-          taskText: true,
-          taskStatus: true,
-          stageProgress: true,
-          createdAt: true,
-        },
-      }),
-      prisma.session.count({ where }),
-    ]);
-
-    res.status(200).json({ sessions, total });
   }
 );
 

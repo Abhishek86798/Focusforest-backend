@@ -56,35 +56,40 @@ router.get(
   "/today",
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
-    const today = await getUserLocalToday(req.userId);
+    try {
+      const today = await getUserLocalToday(req.userId);
 
-    const tree = await prisma.dailyTree.findUnique({
-      where: { userId_date: { userId: req.userId, date: today } },
-    });
-
-    if (!tree) {
-      // No session today yet — return seed state
-      res.status(200).json({
-        date: today.toISOString().slice(0, 10),
-        stage: 0,
-        glowLevel: 0,
-        totalSessions: 0,
-        sessionsWithTask: 0,
-        isBare: false,
-        finalisedAt: null,
+      const tree = await prisma.dailyTree.findUnique({
+        where: { userId_date: { userId: req.userId, date: today } },
       });
-      return;
-    }
 
-    res.status(200).json({
-      date: tree.date.toISOString().slice(0, 10),
-      stage: tree.stage,
-      glowLevel: tree.glowLevel,
-      totalSessions: tree.totalSessions,
-      sessionsWithTask: tree.sessionsWithTask,
-      isBare: tree.isBare,
-      finalisedAt: tree.finalisedAt ?? null,
-    });
+      if (!tree) {
+        // No session today yet — return seed state
+        res.status(200).json({
+          date: today.toISOString().slice(0, 10),
+          stage: 0,
+          glowLevel: 0,
+          totalSessions: 0,
+          sessionsWithTask: 0,
+          isBare: false,
+          finalisedAt: null,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        date: tree.date.toISOString().slice(0, 10),
+        stage: tree.stage,
+        glowLevel: tree.glowLevel,
+        totalSessions: tree.totalSessions,
+        sessionsWithTask: tree.sessionsWithTask,
+        isBare: tree.isBare,
+        finalisedAt: tree.finalisedAt ?? null,
+      });
+    } catch (err) {
+      console.error("Trees /today error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "Failed to fetch today's tree."));
+    }
   }
 );
 
@@ -102,55 +107,60 @@ router.get(
   "/calendar",
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
-    const query = calendarQuerySchema.safeParse(req.query);
-    if (!query.success) {
-      res.status(400).json(apiError("VALIDATION_ERROR", "Invalid query parameters."));
-      return;
+    try {
+      const query = calendarQuerySchema.safeParse(req.query);
+      if (!query.success) {
+        res.status(400).json(apiError("VALIDATION_ERROR", "Invalid query parameters."));
+        return;
+      }
+
+      const { month, year } = query.data;
+
+      // Build date range filter if month+year are provided
+      let dateFilter: { gte?: Date; lte?: Date } | undefined;
+      if (month !== undefined && year !== undefined) {
+        const start = new Date(Date.UTC(year, month - 1, 1));
+        const end = new Date(Date.UTC(year, month, 0)); // last day of month
+        dateFilter = { gte: start, lte: end };
+      } else if (year !== undefined) {
+        dateFilter = {
+          gte: new Date(Date.UTC(year, 0, 1)),
+          lte: new Date(Date.UTC(year, 11, 31)),
+        };
+      }
+
+      const trees = await prisma.dailyTree.findMany({
+        where: {
+          userId: req.userId,
+          ...(dateFilter ? { date: dateFilter } : {}),
+        },
+        orderBy: { date: "asc" },
+        select: {
+          date: true,
+          stage: true,
+          glowLevel: true,
+          totalSessions: true,
+          sessionsWithTask: true,
+          isBare: true,
+          finalisedAt: true,
+        },
+      });
+
+      res.status(200).json({
+        trees: trees.map((t) => ({
+          date: t.date.toISOString().slice(0, 10),
+          stage: t.stage,
+          glowLevel: t.glowLevel,
+          totalSessions: t.totalSessions,
+          sessionsWithTask: t.sessionsWithTask,
+          isBare: t.isBare,
+          finalisedAt: t.finalisedAt ?? null,
+        })),
+      });
+    } catch (err) {
+      console.error("Trees /calendar error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "Failed to fetch calendar data."));
     }
-
-    const { month, year } = query.data;
-
-    // Build date range filter if month+year are provided
-    let dateFilter: { gte?: Date; lte?: Date } | undefined;
-    if (month !== undefined && year !== undefined) {
-      const start = new Date(Date.UTC(year, month - 1, 1));
-      const end = new Date(Date.UTC(year, month, 0)); // last day of month
-      dateFilter = { gte: start, lte: end };
-    } else if (year !== undefined) {
-      dateFilter = {
-        gte: new Date(Date.UTC(year, 0, 1)),
-        lte: new Date(Date.UTC(year, 11, 31)),
-      };
-    }
-
-    const trees = await prisma.dailyTree.findMany({
-      where: {
-        userId: req.userId,
-        ...(dateFilter ? { date: dateFilter } : {}),
-      },
-      orderBy: { date: "asc" },
-      select: {
-        date: true,
-        stage: true,
-        glowLevel: true,
-        totalSessions: true,
-        sessionsWithTask: true,
-        isBare: true,
-        finalisedAt: true,
-      },
-    });
-
-    res.status(200).json({
-      trees: trees.map((t) => ({
-        date: t.date.toISOString().slice(0, 10),
-        stage: t.stage,
-        glowLevel: t.glowLevel,
-        totalSessions: t.totalSessions,
-        sessionsWithTask: t.sessionsWithTask,
-        isBare: t.isBare,
-        finalisedAt: t.finalisedAt ?? null,
-      })),
-    });
   }
 );
 
@@ -164,73 +174,77 @@ router.get(
   "/week/:weekId",
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
-    const weekId = req.params.weekId as string;
-    const range = parseWeekId(weekId);
+    try {
+      const weekId = req.params.weekId as string;
+      const range = parseWeekId(weekId);
 
-    if (!range) {
-      res.status(400).json(
-        apiError("VALIDATION_ERROR", "Invalid weekId format. Use YYYY-Www (e.g. 2025-W10).")
-      );
-      return;
+      if (!range) {
+        res.status(400).json(
+          apiError("VALIDATION_ERROR", "Invalid weekId format. Use YYYY-Www (e.g. 2025-W10).")
+        );
+        return;
+      }
+
+      const { startDate, endDate } = range;
+
+      const trees = await prisma.dailyTree.findMany({
+        where: {
+          userId: req.userId,
+          date: { gte: startDate, lte: endDate },
+        },
+        orderBy: { date: "asc" },
+        select: {
+          date: true,
+          stage: true,
+          glowLevel: true,
+          totalSessions: true,
+          isBare: true,
+          finalisedAt: true,
+        },
+      });
+
+      // Build a full 7-day grid — fill missing days with null (no session yet)
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate);
+        d.setUTCDate(startDate.getUTCDate() + i);
+        const dateStr = d.toISOString().slice(0, 10);
+
+        const found = trees.find((t) => t.date.toISOString().slice(0, 10) === dateStr);
+        days.push(
+          found
+            ? {
+                date: dateStr,
+                stage: found.stage,
+                glowLevel: found.glowLevel,
+                totalSessions: found.totalSessions,
+                isBare: found.isBare,
+                finalisedAt: found.finalisedAt ?? null,
+              }
+            : {
+                date: dateStr,
+                stage: 0,
+                glowLevel: 0,
+                totalSessions: 0,
+                isBare: false,
+                finalisedAt: null,
+              }
+        );
+      }
+
+      const complete = days.every((d) => d.totalSessions > 0);
+
+      res.status(200).json({
+        weekId,
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: endDate.toISOString().slice(0, 10),
+        complete,
+        days,
+      });
+    } catch (err) {
+      console.error("Trees /week error:", err);
+      res.status(500).json(apiError("INTERNAL_ERROR", "Failed to fetch week data."));
     }
-
-    const { startDate, endDate } = range;
-
-    const trees = await prisma.dailyTree.findMany({
-      where: {
-        userId: req.userId,
-        date: { gte: startDate, lte: endDate },
-      },
-      orderBy: { date: "asc" },
-      select: {
-        date: true,
-        stage: true,
-        glowLevel: true,
-        totalSessions: true,
-        isBare: true,
-        finalisedAt: true,
-      },
-    });
-
-    // Build a full 7-day grid — fill missing days with null (no session yet)
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(startDate);
-      d.setUTCDate(startDate.getUTCDate() + i);
-      const dateStr = d.toISOString().slice(0, 10);
-
-      const found = trees.find((t) => t.date.toISOString().slice(0, 10) === dateStr);
-      days.push(
-        found
-          ? {
-              date: dateStr,
-              stage: found.stage,
-              glowLevel: found.glowLevel,
-              totalSessions: found.totalSessions,
-              isBare: found.isBare,
-              finalisedAt: found.finalisedAt ?? null,
-            }
-          : {
-              date: dateStr,
-              stage: 0,
-              glowLevel: 0,
-              totalSessions: 0,
-              isBare: false, // not yet finalised
-              finalisedAt: null,
-            }
-      );
-    }
-
-    // Week complete = all 7 days have at least 1 session (min Sprout stage)
-    const complete = days.every((d) => d.totalSessions > 0);
-
-    res.status(200).json({
-      weekId,
-      startDate: startDate.toISOString().slice(0, 10),
-      endDate: endDate.toISOString().slice(0, 10),
-      complete,
-      days,
-    });
   }
 );
 
